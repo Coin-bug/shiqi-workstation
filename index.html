@@ -4,14 +4,22 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>士气工作站</title>
-    <link rel="stylesheet" href="/src/styles.css" />
+    <link rel="stylesheet" href="src/styles.css" />
   </head>
   <body>
     <main id="app" class="app" aria-live="polite">
       <section id="entryPage" class="page page-entry is-active">
         <div class="entry-bg"></div>
-        <img class="entry-logo" src="/assets/source/切图/工作台_首页_默认/工作台_首页_默认_logo.png" alt="士气工作站" />
-        <img class="entry-title" src="/assets/source/切图/工作台_首页_默认/工作台_首页_默认_neiorong.png" alt="WORK SPACE" />
+        <img class="entry-logo" src="assets/source/切图/工作台_首页_默认/工作台_首页_默认_logo.png" alt="士气工作站" />
+        <div id="entryShiqEffect" class="entry-shiq-effect" aria-hidden="true">
+          <canvas id="entryShiqBeam" class="entry-shiq-canvas entry-shiq-beam"></canvas>
+          <canvas id="entryShiqFog" class="entry-shiq-canvas entry-shiq-fog"></canvas>
+          <svg class="entry-shiq-logo" viewBox="0 0 423 151" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="SHIQ">
+            <path d="M86.856 124.592C78.624 131.816 66.528 136.016 53.256 136.016C52.416 136.016 51.408 136.016 50.4 135.848C27.552 134.84 9.072 121.736 3.528 102.584L26.544 96.872C30.072 108.968 41.832 113.672 51.576 114.176C59.136 114.512 66.192 112.496 70.224 108.968C72.576 106.784 73.752 104.096 73.584 100.904C73.416 92.336 65.52 88.304 50.232 83.264C48.216 82.592 46.536 82.088 45.024 81.584C44.184 81.248 43.344 80.912 42.504 80.576C31.92 77.048 7.224 68.48 9.072 45.464C10.752 25.304 31.08 14.552 50.232 14.552C71.064 14.552 86.352 23.456 93.408 39.584L71.232 47.648C69.048 42.776 64.512 36.392 50.232 36.392C49.56 36.392 33.936 36.56 33.096 47.144C32.592 52.856 39.312 56.216 50.904 60.248C52.08 60.584 53.088 60.92 53.928 61.256C55.272 61.76 56.616 62.264 58.296 62.768C70.728 66.8 96.936 75.2 97.608 100.4C97.944 109.64 94.248 118.04 86.856 124.592ZM178.979 16.568H202.835V134H178.979V85.616H127.739V134H103.883V16.568H127.739V63.776H178.979V16.568ZM238.124 134.168H214.268V16.568H238.124V134.168ZM381.217 134H352.153L344.089 126.776C334.009 132.656 322.249 136.016 309.481 136.016C273.361 136.016 244.129 108.8 244.129 75.368C244.129 41.768 273.361 14.552 309.481 14.552C345.601 14.552 375.001 41.768 375.001 75.368C375.001 90.152 369.121 103.76 359.545 114.344L381.217 134ZM309.481 114.176C315.529 114.176 321.241 113 326.449 110.816L305.953 92H335.017L342.409 98.888C347.785 92.336 350.977 84.104 350.977 75.368C350.977 53.864 332.497 36.392 309.481 36.392C286.633 36.392 267.985 53.864 267.985 75.368C267.985 96.704 286.633 114.176 309.481 114.176Z" />
+            <path d="M412.71 132.557L422.773 75.5362C422.978 73.9805 421.967 72.2616 420.85 72.2616L414.334 72.2547C413.214 72.2547 412.204 70.5296 412.415 68.974L422.124 18.2953C422.335 16.7396 421.325 15.0138 420.205 15.0138L397.51 15C396.882 15 396.4 15.5659 396.284 16.4356L386.939 69.0375C386.728 70.5931 387.738 72.3182 388.859 72.3182L395.262 72.3258C396.378 72.3258 397.389 74.044 397.184 75.5997L386.826 130.712C386.622 132.267 387.633 133.985 388.749 133.985L411.481 134C412.112 134 412.597 133.427 412.71 132.557Z" />
+          </svg>
+        </div>
+        <img class="entry-title" src="assets/source/切图/工作台_首页_默认/工作台_首页_默认_neiorong.png" alt="WORK SPACE" />
         <button id="startButton" class="start-button" type="button" aria-label="开始使用士气工作站">
           <span>开始使用</span>
         </button>
@@ -20,42 +28,42 @@
       <section id="workspacePage" class="page page-workspace" aria-label="工作站首页">
         <aside class="workspace-sidebar" aria-label="工作站导航">
           <div class="sidebar-logo">
-            <img src="/assets/source/切图/工作台_首页/导航栏_logo.png" alt="士气工作站" />
+            <img src="assets/source/切图/工作台_首页/导航栏_logo.png" alt="士气工作站" />
           </div>
           <nav class="workspace-menu">
             <button class="menu-hit is-selected" type="button">
-              <img class="menu-icon icon-off" src="/assets/source/切图/工作台_首页/菜单栏_菜单_菜单一_icon未选.svg" alt="" />
-              <img class="menu-icon icon-on" src="/assets/source/切图/工作台_首页/菜单栏_菜单_菜单一_icon选中.svg" alt="" />
+              <img class="menu-icon icon-off" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单一_icon未选.svg" alt="" />
+              <img class="menu-icon icon-on" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单一_icon选中.svg" alt="" />
               <span>提示词整理</span>
             </button>
             <button class="menu-hit" type="button">
-              <img class="menu-icon icon-off" src="/assets/source/切图/工作台_首页/菜单栏_菜单_菜单二_icon未选.svg" alt="" />
-              <img class="menu-icon icon-on" src="/assets/source/切图/工作台_首页/菜单栏_菜单_菜单二_icon选中.svg" alt="" />
+              <img class="menu-icon icon-off" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单二_icon未选.svg" alt="" />
+              <img class="menu-icon icon-on" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单二_icon选中.svg" alt="" />
               <span>Skill 整理</span>
             </button>
             <button class="menu-hit" type="button">
-              <img class="menu-icon icon-off" src="/assets/source/切图/工作台_首页/菜单栏_菜单_菜单三_icon未选.svg" alt="" />
-              <img class="menu-icon icon-on" src="/assets/source/切图/工作台_首页/菜单栏_菜单_菜单三_icon选中.svg" alt="" />
+              <img class="menu-icon icon-off" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单三_icon未选.svg" alt="" />
+              <img class="menu-icon icon-on" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单三_icon选中.svg" alt="" />
               <span>需求分析</span>
             </button>
             <button class="menu-hit" type="button">
-              <img class="menu-icon icon-off" src="/assets/source/切图/工作台_首页/菜单栏_菜单_菜单四_icon未选.svg" alt="" />
-              <img class="menu-icon icon-on" src="/assets/source/切图/工作台_首页/菜单栏_菜单_菜单四_icon选中.svg" alt="" />
+              <img class="menu-icon icon-off" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单四_icon未选.svg" alt="" />
+              <img class="menu-icon icon-on" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单四_icon选中.svg" alt="" />
               <span>自动提取色板</span>
             </button>
             <button class="menu-hit" type="button">
-              <img class="menu-icon icon-off" src="/assets/source/切图/工作台_首页/菜单栏_菜单_菜单五_icon未选.svg" alt="" />
-              <img class="menu-icon icon-on" src="/assets/source/切图/工作台_首页/菜单栏_菜单_菜单五_icon选中.svg" alt="" />
+              <img class="menu-icon icon-off" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单五_icon未选.svg" alt="" />
+              <img class="menu-icon icon-on" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单五_icon选中.svg" alt="" />
               <span>一键自动核查</span>
             </button>
             <button class="menu-hit" type="button">
-              <img class="menu-icon icon-off" src="/assets/source/切图/工作台_首页/菜单栏_菜单_菜单六_icon未选.svg" alt="" />
-              <img class="menu-icon icon-on" src="/assets/source/切图/工作台_首页/菜单栏_菜单_菜单六_icon选中.svg" alt="" />
+              <img class="menu-icon icon-off" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单六_icon未选.svg" alt="" />
+              <img class="menu-icon icon-on" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单六_icon选中.svg" alt="" />
               <span>人感文案编辑器</span>
             </button>
             <button class="menu-hit" type="button">
-              <img class="menu-icon icon-off" src="/assets/source/切图/工作台_首页/菜单栏_菜单_菜单七_icon未选.svg" alt="" />
-              <img class="menu-icon icon-on" src="/assets/source/切图/工作台_首页/菜单栏_菜单_菜单七_icon选中.svg" alt="" />
+              <img class="menu-icon icon-off" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单七_icon未选.svg" alt="" />
+              <img class="menu-icon icon-on" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单七_icon选中.svg" alt="" />
               <span>风格延展</span>
             </button>
           </nav>
@@ -65,7 +73,7 @@
           <header class="workspace-topbar">
             <div class="topbar-texture"></div>
             <button class="api-key-button" type="button" aria-label="API key">
-              <img src="/assets/source/切图/工作台_首页/导航栏_API Key_neirong_icon.svg" alt="" />
+              <img src="assets/source/切图/工作台_首页/导航栏_API Key_neirong_icon.svg" alt="" />
               <span>API key</span>
             </button>
           </header>
@@ -73,10 +81,10 @@
           <div class="workspace-titlebar">
             <div class="workspace-title">
               <span>全部提示词</span>
-              <img src="/assets/source/切图/工作台_首页/标题栏_biaoti_icon.svg" alt="" />
+              <img src="assets/source/切图/工作台_首页/标题栏_biaoti_icon.svg" alt="" />
             </div>
             <label class="workspace-search">
-              <img src="/assets/source/切图/工作台_首页/标题栏_gongju_search_iocn.svg" alt="" />
+              <img src="assets/source/切图/工作台_首页/标题栏_gongju_search_iocn.svg" alt="" />
               <input type="search" placeholder="输入关键词" />
               <span>搜索</span>
             </label>
@@ -94,13 +102,13 @@
 
       <section id="modalLayer" class="modal-layer" aria-hidden="true">
         <div class="modal-stage">
-          <img class="workspace-shot modal-workspace-bg" src="/assets/figma/workspace.png" alt="" />
+          <img class="workspace-shot modal-workspace-bg" src="assets/figma/workspace.png" alt="" />
           <div class="page-mask"></div>
           <div class="upload-modal">
             <div class="modal-bg"></div>
-            <div class="modal-title">上传参考图 <img src="/assets/source/切图/工作台_首页_hover_shangchuan_prompt_fenxi/添加图片_标题栏_icon.svg" alt="" /></div>
+            <div class="modal-title">上传参考图 <img src="assets/source/切图/工作台_首页_hover_shangchuan_prompt_fenxi/添加图片_标题栏_icon.svg" alt="" /></div>
             <button id="closeModal" class="modal-close" type="button" aria-label="关闭">
-              <img src="/assets/source/切图/工作台_首页_hover_shangchuan_prompt_fenxi/添加图片_标题栏_guanbi.svg" alt="" />
+              <img src="assets/source/切图/工作台_首页_hover_shangchuan_prompt_fenxi/添加图片_标题栏_guanbi.svg" alt="" />
             </button>
 
             <label id="dropZone" class="drop-zone" aria-label="上传参考图">
@@ -113,16 +121,18 @@
             <section class="prompt-panel">
               <div class="prompt-header">
                 <h2>生成 Prompt</h2>
-                <img class="prompt-brand" src="/assets/source/切图/工作台_首页_hover_shangchuan_prompt_fenxi/添加图片_prompt_zhuang1.png" alt="SHIQI-PROMPT" />
+                <img class="prompt-brand" src="assets/source/切图/工作台_首页_hover_shangchuan_prompt_fenxi/添加图片_prompt_zhuang1.png" alt="SHIQI-PROMPT" />
               </div>
 
               <div id="loadingPanel" class="loading-panel">
-                <img class="loading-star" src="/assets/source/切图/工作台_首页_hover_shangchuan_prompt_fenxi/添加图片_prompt_jiazia_xingxing.svg" alt="" />
-                <div id="loadingText" class="loading-text">正在识别画面主体</div>
+                <div id="loadingCopy" class="loading-copy">
+                  <div id="loadingText" class="loading-text">正在识别画面主体</div>
+                  <img class="loading-star" src="assets/source/切图/工作台_首页_hover_shangchuan_prompt_fenxi/添加图片_prompt_jiazia_xingxing.svg" alt="" />
+                </div>
                 <div class="progress-shell">
-                  <img class="progress-track" src="/assets/source/切图/工作台_首页_hover_shangchuan_prompt_fenxi/添加图片_prompt_jiazia_jindu_加载_wei.svg" alt="" />
+                  <img class="progress-track" src="assets/source/切图/工作台_首页_hover_shangchuan_prompt_fenxi/添加图片_prompt_jiazia_jindu_加载_wei.svg" alt="" />
                   <div id="progressBar" class="progress-bar">
-                    <img src="/assets/source/切图/工作台_首页_hover_shangchuan_prompt_fenxi/添加图片_prompt_jiazia_jindu_加载_wancheng.svg" alt="" />
+                    <img src="assets/source/切图/工作台_首页_hover_shangchuan_prompt_fenxi/添加图片_prompt_jiazia_jindu_加载_wancheng.svg" alt="" />
                   </div>
                 </div>
               </div>
@@ -143,7 +153,7 @@
                 <button id="copyEnglish" class="inline-copy en-copy" type="button">复制</button>
                 <textarea id="englishPrompt" class="prompt-textarea english-area">This high-end headphone product advertisement poster features a centrally centered portrait with a calm expression, wearing black wireless noise-canceling headphones. The background is minimalist light gray with ample white space, emphasizing the contrast between product and subject, with symmetrical composition, refined commercial photography lighting, realistic texture, and a clean poster layout.</textarea>
               </form>
-              <img class="prompt-decor" src="/assets/source/切图/工作台_首页_hover_shangchuan_prompt_fenxi/添加图片_prompt_zhuang2.png" alt="" />
+              <img class="prompt-decor" src="assets/source/切图/工作台_首页_hover_shangchuan_prompt_fenxi/添加图片_prompt_zhuang2.png" alt="" />
             </section>
           </div>
         </div>
@@ -152,6 +162,7 @@
       <div id="toast" class="toast" role="status"></div>
     </main>
 
-    <script type="module" src="/src/app.js"></script>
+    <script src="src/cards.js"></script>
+    <script src="src/app.js"></script>
   </body>
 </html>

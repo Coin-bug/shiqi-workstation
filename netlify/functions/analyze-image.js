@@ -1,4 +1,8 @@
 export const handler = async (event) => {
+  if (event.httpMethod === "OPTIONS") {
+    return json({}, 200);
+  }
+
   if (event.httpMethod !== "POST") {
     return json({ error: "Method not allowed" }, 405);
   }
@@ -76,7 +80,12 @@ function safeParse(text) {
 function json(body, status = 200) {
   return {
     statusCode: status,
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type"
+    },
     body: JSON.stringify(body)
   };
 }

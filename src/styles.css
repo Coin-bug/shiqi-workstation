@@ -90,6 +90,8 @@ html.is-workspace .app {
 }
 
 .page-entry {
+  --entry-cover-w: max(100vw, calc(100vh * 1440 / 904));
+  --entry-cover-h: max(100vh, calc(100vw * 904 / 1440));
   width: 100vw;
   height: 100vh;
   left: 0;
@@ -103,7 +105,7 @@ html.is-workspace .app {
 .entry-bg {
   position: absolute;
   inset: 0;
-  background: url("/assets/source/切图/工作台_首页_默认/工作台_首页_默认-beijing.png") center / cover no-repeat;
+  background: url("../assets/source/切图/工作台_首页_默认/工作台_首页_默认-beijing.png") center / cover no-repeat;
   transform: scale(1.018);
   filter: saturate(1.04) contrast(1.08);
   animation: entryBgIn 900ms ease-out both;
@@ -141,6 +143,48 @@ html.is-workspace .app {
   z-index: 2;
   filter: drop-shadow(0 22px 35px rgba(0, 0, 0, 0.42));
   animation: entryTitleIn 780ms cubic-bezier(0.16, 1, 0.3, 1) 320ms both;
+}
+
+.entry-shiq-effect {
+  position: absolute;
+  left: calc(50% - var(--entry-cover-w) / 2 + var(--entry-cover-w) * 501 / 1440);
+  top: calc(50% - var(--entry-cover-h) / 2 + var(--entry-cover-h) * 247 / 904);
+  width: calc(var(--entry-cover-w) * 448 / 1440);
+  aspect-ratio: 423 / 151;
+  z-index: 3;
+  pointer-events: none;
+  overflow: visible;
+  animation: entryShiqIn 780ms cubic-bezier(0.16, 1, 0.3, 1) 260ms both;
+}
+
+.entry-shiq-canvas {
+  position: absolute;
+  inset: -34%;
+  width: 168%;
+  height: 168%;
+  pointer-events: none;
+}
+
+.entry-shiq-beam {
+  z-index: 1;
+  mix-blend-mode: plus-lighter;
+}
+
+.entry-shiq-fog {
+  z-index: 2;
+}
+
+.entry-shiq-logo {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: #fffaed;
+  filter: drop-shadow(0 0 8px rgba(255, 236, 210, 0.16));
+  animation: shiqLogoHeat 2s ease-in-out infinite alternate;
 }
 
 .start-button {
@@ -209,6 +253,12 @@ html.is-workspace .app {
   transition: opacity 220ms ease, transform 220ms ease;
 }
 
+.page-entry.is-exiting .entry-shiq-effect {
+  opacity: 0;
+  translate: 0 -10px;
+  transition: opacity 220ms ease, translate 220ms ease;
+}
+
 .page-entry.is-exiting .entry-title,
 .page-entry.is-exiting .start-button {
   opacity: 0;
@@ -255,6 +305,17 @@ html.is-workspace .app {
   }
 }
 
+@keyframes entryShiqIn {
+  from {
+    opacity: 0;
+    translate: 0 28px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
 @keyframes entryButtonIn {
   from {
     opacity: 0;
@@ -263,6 +324,15 @@ html.is-workspace .app {
   to {
     opacity: 1;
     translate: 0 0;
+  }
+}
+
+@keyframes shiqLogoHeat {
+  from {
+    filter: drop-shadow(0 0 5px rgba(255, 236, 210, 0.1));
+  }
+  to {
+    filter: drop-shadow(0 0 12px rgba(255, 104, 18, 0.22));
   }
 }
 
@@ -290,6 +360,8 @@ html.is-workspace .app {
 @media (prefers-reduced-motion: reduce) {
   .entry-bg,
   .entry-logo,
+  .entry-shiq-effect,
+  .entry-shiq-logo,
   .entry-title,
   .start-button {
     animation-duration: 1ms;
@@ -326,7 +398,7 @@ html.is-workspace .app {
   right: 0;
   bottom: 0;
   height: min(617px, 72vh);
-  background: url("/assets/source/切图/工作台_首页/菜单栏_背景.png") left bottom / 217px 617px no-repeat;
+  background: url("../assets/source/切图/工作台_首页/菜单栏_背景.png") left bottom / 217px 617px no-repeat;
   pointer-events: none;
 }
 
@@ -346,15 +418,18 @@ html.is-workspace .app {
   z-index: 2;
   height: 56px;
   display: flex;
-  align-items: flex-end;
-  padding: 0 0 16px 22px;
+  align-items: flex-start;
+  padding: 10px 0 0 14px;
   background: #050505;
+  overflow: visible;
 }
 
 .sidebar-logo img {
-  width: 188px;
+  width: 138px;
   height: auto;
   display: block;
+  object-fit: contain;
+  object-position: left top;
 }
 
 .workspace-menu {
@@ -395,7 +470,7 @@ html.is-workspace .app {
   width: 216px;
   height: 48px;
   opacity: 0;
-  background: url("/assets/source/切图/工作台_首页/菜单栏_菜单_菜单一_beijing.svg") left center / 216px 48px no-repeat;
+  background: url("../assets/source/切图/工作台_首页/菜单栏_菜单_菜单一_beijing.svg") left center / 216px 48px no-repeat;
   transition: opacity 160ms ease;
 }
 
@@ -472,7 +547,7 @@ html.is-workspace .app {
   opacity: 0.85;
   background:
     linear-gradient(90deg, rgba(0, 0, 0, 0) 78%, #000 100%),
-    url("/assets/source/切图/工作台_首页/导航栏_背景纹理.png") left top / 888px 56px no-repeat;
+    url("../assets/source/切图/工作台_首页/导航栏_背景纹理.png") left top / 888px 56px no-repeat;
 }
 
 .api-key-button {
@@ -611,10 +686,12 @@ html.is-workspace .app {
   left: 0;
   right: 0;
   bottom: 0;
-  height: 93px;
+  height: 104px;
   z-index: 35;
   pointer-events: none;
-  background: linear-gradient(180deg, rgba(4, 4, 4, 0), rgba(4, 4, 4, 0.88) 46%, #040404 100%);
+  background: linear-gradient(180deg, rgba(4, 4, 4, 0) 0%, rgba(4, 4, 4, 0.22) 18%, rgba(4, 4, 4, 0.5) 58%, rgba(4, 4, 4, 0.74) 100%);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 .upload-button {
@@ -636,15 +713,6 @@ html.is-workspace .app {
   transform: translateX(-50%);
   z-index: 40;
   isolation: isolate;
-}
-
-.upload-button::before {
-  content: "";
-  position: absolute;
-  inset: -14px -88px -22px;
-  z-index: -1;
-  border-radius: 18px;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0), rgba(4, 4, 4, 0.56));
 }
 
 .upload-button::after {
@@ -696,7 +764,7 @@ html.is-workspace .app {
 .card-info {
   position: absolute;
   inset: 0;
-  padding: 82px 34px 28px 36px;
+  padding: 82px 34px 32px 36px;
   opacity: 0;
   overflow: hidden;
   border-radius: 7px;
@@ -761,12 +829,16 @@ html.is-workspace .app {
   position: relative;
   z-index: 1;
   margin: 0;
+  display: -webkit-box;
   font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
   font-size: 13px;
   line-height: 1.55;
   font-weight: 600;
-  max-height: calc(100% - 154px);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--prompt-lines, 7);
+  max-height: none;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .card-copy {
@@ -866,7 +938,7 @@ html.is-workspace .app {
   position: fixed;
   inset: 0;
   display: none;
-  z-index: 20;
+  z-index: 2000;
 }
 
 .modal-layer.is-open {
@@ -874,7 +946,14 @@ html.is-workspace .app {
 }
 
 .modal-stage {
-  overflow: visible;
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  left: 0;
+  top: 0;
+  transform: none;
+  overflow: hidden;
 }
 
 .modal-close {
@@ -898,30 +977,34 @@ html.is-workspace .app {
 .modal-workspace-bg {
   position: absolute;
   inset: 0;
-  width: 1440px;
-  height: 900px;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
   filter: blur(8px) brightness(0.52);
-  transform: scale(1.01);
+  transform: scale(1.03);
+  z-index: 1;
 }
 
 .page-mask {
   position: absolute;
   inset: 0;
   background: rgba(0, 0, 0, 0.52);
+  z-index: 2;
 }
 
 .upload-modal {
   position: absolute;
-  left: 240px;
-  top: 110px;
+  left: 50%;
+  top: 50%;
   width: 960px;
   height: 680px;
+  transform: translate(-50%, -50%);
   border-radius: 24px;
   overflow: hidden;
   background: rgba(20, 20, 20, 0.94);
   backdrop-filter: blur(60px);
   box-shadow: 0 30px 90px rgba(0, 0, 0, 0.58), inset 0 0 8px rgba(255, 115, 0, 0.1);
+  z-index: 3;
 }
 
 .upload-modal::after {
@@ -937,7 +1020,7 @@ html.is-workspace .app {
 .modal-bg {
   position: absolute;
   inset: 0;
-  background: url("/assets/source/切图/工作台_首页_hover_shangchuan_prompt_fenxi/添加图片_弹窗背景-tu.png") center / cover no-repeat;
+  background: url("../assets/source/切图/工作台_首页_hover_shangchuan_prompt_fenxi/添加图片_弹窗背景-tu.png") center / cover no-repeat;
   opacity: 1;
   pointer-events: none;
 }
@@ -1043,24 +1126,38 @@ html.is-workspace .app {
   display: none;
 }
 
-.loading-star {
+.loading-copy {
   position: absolute;
-  left: 308px;
-  top: 0;
+  top: 13px;
+  left: 50%;
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 8px;
+  transform: translateX(-50%);
+  transition: transform 240ms ease, opacity 240ms ease;
+}
+
+.loading-copy.is-changing {
+  transform: translateX(-50%) translateY(2px);
+  opacity: 0.84;
+}
+
+.loading-star {
   width: 30px;
   height: 20px;
+  margin-top: -8px;
   object-fit: contain;
+  flex: 0 0 auto;
+  animation: starPulse 1200ms ease-in-out infinite;
 }
 
 .loading-text {
-  position: absolute;
-  top: 13px;
-  left: 155px;
-  width: 160px;
+  white-space: nowrap;
   text-align: center;
   font-size: 20px;
   font-weight: 900;
   line-height: 28px;
+  transition: opacity 220ms ease;
 }
 
 .progress-shell {
@@ -1154,6 +1251,11 @@ html.is-workspace .app {
 }
 
 .modal-layer.is-complete .prompt-brand {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.modal-layer.is-complete .prompt-decor {
   opacity: 0;
   visibility: hidden;
 }
