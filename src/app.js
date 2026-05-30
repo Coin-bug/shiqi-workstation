@@ -78,6 +78,9 @@ function closeUploadModal() {
   modalLayer.className = "modal-layer";
   modalLayer.setAttribute("aria-hidden", "true");
   stopProgress();
+  if (resultScrollTimer) window.clearTimeout(resultScrollTimer);
+  resultScrollTimer = null;
+  resultPanel.classList.remove("is-scrolling");
 }
 
 function resetUploadState() {
