@@ -1358,4 +1358,5 @@ html.is-workspace .app {
   object-position: top left;
   opacity: 1;
   pointer-events: none;
+  z-index: 1;
 }
