@@ -10,27 +10,86 @@
     <main id="app" class="app" aria-live="polite">
       <section id="entryPage" class="page page-entry is-active">
         <div class="entry-bg"></div>
-        <img class="entry-logo" src="/assets/figma/entry-logo.png" alt="士气工作站" />
-        <img class="entry-title" src="/assets/figma/entry-title.png" alt="WORK SPACE" />
-        <button id="startButton" class="start-button" type="button">开始使用</button>
+        <img class="entry-logo" src="/assets/source/切图/工作台_首页_默认/工作台_首页_默认_logo.png" alt="士气工作站" />
+        <img class="entry-title" src="/assets/source/切图/工作台_首页_默认/工作台_首页_默认_neiorong.png" alt="WORK SPACE" />
+        <button id="startButton" class="start-button" type="button" aria-label="开始使用士气工作站">
+          <span>开始使用</span>
+        </button>
       </section>
 
       <section id="workspacePage" class="page page-workspace" aria-label="工作站首页">
-        <img class="workspace-shot" src="/assets/figma/workspace.png" alt="" />
-        <div class="menu-hotspots" aria-hidden="true">
-          <button class="menu-hit is-selected" type="button" style="--y: 137px">提示词整理</button>
-          <button class="menu-hit" type="button" style="--y: 203px">Skill 整理</button>
-          <button class="menu-hit" type="button" style="--y: 269px">需求分析</button>
-          <button class="menu-hit" type="button" style="--y: 335px">自动提取色板</button>
-          <button class="menu-hit" type="button" style="--y: 401px">一键自动核查</button>
-          <button class="menu-hit" type="button" style="--y: 467px">人感文案编辑器</button>
-          <button class="menu-hit" type="button" style="--y: 533px">风格延展</button>
-        </div>
+        <aside class="workspace-sidebar" aria-label="工作站导航">
+          <div class="sidebar-logo">
+            <img src="/assets/source/切图/工作台_首页/导航栏_logo.png" alt="士气工作站" />
+          </div>
+          <nav class="workspace-menu">
+            <button class="menu-hit is-selected" type="button">
+              <img class="menu-icon icon-off" src="/assets/source/切图/工作台_首页/菜单栏_菜单_菜单一_icon未选.svg" alt="" />
+              <img class="menu-icon icon-on" src="/assets/source/切图/工作台_首页/菜单栏_菜单_菜单一_icon选中.svg" alt="" />
+              <span>提示词整理</span>
+            </button>
+            <button class="menu-hit" type="button">
+              <img class="menu-icon icon-off" src="/assets/source/切图/工作台_首页/菜单栏_菜单_菜单二_icon未选.svg" alt="" />
+              <img class="menu-icon icon-on" src="/assets/source/切图/工作台_首页/菜单栏_菜单_菜单二_icon选中.svg" alt="" />
+              <span>Skill 整理</span>
+            </button>
+            <button class="menu-hit" type="button">
+              <img class="menu-icon icon-off" src="/assets/source/切图/工作台_首页/菜单栏_菜单_菜单三_icon未选.svg" alt="" />
+              <img class="menu-icon icon-on" src="/assets/source/切图/工作台_首页/菜单栏_菜单_菜单三_icon选中.svg" alt="" />
+              <span>需求分析</span>
+            </button>
+            <button class="menu-hit" type="button">
+              <img class="menu-icon icon-off" src="/assets/source/切图/工作台_首页/菜单栏_菜单_菜单四_icon未选.svg" alt="" />
+              <img class="menu-icon icon-on" src="/assets/source/切图/工作台_首页/菜单栏_菜单_菜单四_icon选中.svg" alt="" />
+              <span>自动提取色板</span>
+            </button>
+            <button class="menu-hit" type="button">
+              <img class="menu-icon icon-off" src="/assets/source/切图/工作台_首页/菜单栏_菜单_菜单五_icon未选.svg" alt="" />
+              <img class="menu-icon icon-on" src="/assets/source/切图/工作台_首页/菜单栏_菜单_菜单五_icon选中.svg" alt="" />
+              <span>一键自动核查</span>
+            </button>
+            <button class="menu-hit" type="button">
+              <img class="menu-icon icon-off" src="/assets/source/切图/工作台_首页/菜单栏_菜单_菜单六_icon未选.svg" alt="" />
+              <img class="menu-icon icon-on" src="/assets/source/切图/工作台_首页/菜单栏_菜单_菜单六_icon选中.svg" alt="" />
+              <span>人感文案编辑器</span>
+            </button>
+            <button class="menu-hit" type="button">
+              <img class="menu-icon icon-off" src="/assets/source/切图/工作台_首页/菜单栏_菜单_菜单七_icon未选.svg" alt="" />
+              <img class="menu-icon icon-on" src="/assets/source/切图/工作台_首页/菜单栏_菜单_菜单七_icon选中.svg" alt="" />
+              <span>风格延展</span>
+            </button>
+          </nav>
+        </aside>
 
-        <button id="uploadButton" class="upload-button" type="button" aria-label="上传参考图"></button>
-        <div id="cardHotzones" class="card-hotzones" aria-label="提示词卡片列表"></div>
+        <section class="workspace-main" aria-label="提示词整理">
+          <header class="workspace-topbar">
+            <div class="topbar-texture"></div>
+            <button class="api-key-button" type="button" aria-label="API key">
+              <img src="/assets/source/切图/工作台_首页/导航栏_API Key_neirong_icon.svg" alt="" />
+              <span>API key</span>
+            </button>
+          </header>
 
-        <div id="savedCards" class="saved-cards" aria-label="新增提示词"></div>
+          <div class="workspace-titlebar">
+            <div class="workspace-title">
+              <span>全部提示词</span>
+              <img src="/assets/source/切图/工作台_首页/标题栏_biaoti_icon.svg" alt="" />
+            </div>
+            <label class="workspace-search">
+              <img src="/assets/source/切图/工作台_首页/标题栏_gongju_search_iocn.svg" alt="" />
+              <input type="search" placeholder="输入关键词" />
+              <span>搜索</span>
+            </label>
+          </div>
+
+          <div class="workspace-scroll" id="workspaceScroll">
+            <div id="cardHotzones" class="card-hotzones" aria-label="提示词卡片列表"></div>
+            <div id="savedCards" class="saved-cards" aria-label="新增提示词"></div>
+          </div>
+
+          <div class="upload-dock" aria-hidden="true"></div>
+          <button id="uploadButton" class="upload-button" type="button" aria-label="上传参考图"></button>
+        </section>
       </section>
 
       <section id="modalLayer" class="modal-layer" aria-hidden="true">
@@ -54,19 +113,22 @@
             <section class="prompt-panel">
               <div class="prompt-header">
                 <h2>生成 Prompt</h2>
-                <img src="/assets/source/切图/工作台_首页_hover_shangchuan_prompt_fenxi/添加图片_prompt_zhuang1.png" alt="SHIQI-PROMPT" />
+                <img class="prompt-brand" src="/assets/source/切图/工作台_首页_hover_shangchuan_prompt_fenxi/添加图片_prompt_zhuang1.png" alt="SHIQI-PROMPT" />
               </div>
 
               <div id="loadingPanel" class="loading-panel">
-                <img class="loading-star" src="/assets/figma/loading-star.svg" alt="" />
+                <img class="loading-star" src="/assets/source/切图/工作台_首页_hover_shangchuan_prompt_fenxi/添加图片_prompt_jiazia_xingxing.svg" alt="" />
                 <div id="loadingText" class="loading-text">正在识别画面主体</div>
                 <div class="progress-shell">
-                  <div id="progressBar" class="progress-bar"></div>
+                  <img class="progress-track" src="/assets/source/切图/工作台_首页_hover_shangchuan_prompt_fenxi/添加图片_prompt_jiazia_jindu_加载_wei.svg" alt="" />
+                  <div id="progressBar" class="progress-bar">
+                    <img src="/assets/source/切图/工作台_首页_hover_shangchuan_prompt_fenxi/添加图片_prompt_jiazia_jindu_加载_wancheng.svg" alt="" />
+                  </div>
                 </div>
               </div>
 
+              <button id="savePrompt" class="save-button" type="button">保存</button>
               <form id="resultPanel" class="result-panel">
-                <button id="savePrompt" class="save-button" type="button">保存</button>
                 <label class="field-title">标题</label>
                 <input id="titleInput" class="prompt-input title-input" value="静谧之中听见野性" />
 

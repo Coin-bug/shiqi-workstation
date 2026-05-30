@@ -23,6 +23,7 @@ const copyEnglish = document.querySelector("#copyEnglish");
 const toast = document.querySelector("#toast");
 const cardHotzones = document.querySelector("#cardHotzones");
 const savedCards = document.querySelector("#savedCards");
+const workspaceScroll = document.querySelector("#workspaceScroll");
 
 const stages = [
   { max: 30, text: "正在识别画面主体" },
@@ -32,12 +33,14 @@ const stages = [
 
 let progressTimer = null;
 let toastTimer = null;
+let resultScrollTimer = null;
 let currentPreviewUrl = "";
 let savedIndex = 0;
 
 function fitStage() {
-  const scale = Math.min(window.innerWidth / 1440, window.innerHeight / 900);
-  document.documentElement.style.setProperty("--stage-scale", scale.toString());
+  const entryScale = Math.min(window.innerWidth / 1440, window.innerHeight / 900);
+  document.documentElement.style.setProperty("--stage-scale", entryScale.toString());
+  scheduleCardLayout();
 }
 
 window.addEventListener("resize", fitStage);
@@ -45,8 +48,15 @@ fitStage();
 renderCardHotzones();
 
 startButton.addEventListener("click", () => {
-  entryPage.classList.remove("is-active");
-  workspacePage.classList.add("is-active");
+  if (entryPage.classList.contains("is-exiting")) return;
+  entryPage.classList.add("is-exiting");
+  window.setTimeout(() => {
+    entryPage.classList.remove("is-active", "is-exiting");
+    workspacePage.classList.add("is-active");
+    document.documentElement.classList.add("is-workspace");
+    document.body.classList.add("is-workspace");
+    scheduleCardLayout();
+  }, 260);
 });
 
 document.querySelectorAll(".menu-hit").forEach((button) => {
@@ -54,19 +64,7 @@ document.querySelectorAll(".menu-hit").forEach((button) => {
 });
 
 uploadButton.addEventListener("click", () => {
-  const picker = document.createElement("input");
-  picker.type = "file";
-  picker.accept = "image/*";
-  picker.addEventListener(
-    "change",
-    () => {
-      const file = picker.files?.[0];
-      if (file) handleFile(file);
-      picker.remove();
-    },
-    { once: true }
-  );
-  picker.click();
+  openModal();
 });
 closeModal.addEventListener("click", closeUploadModal);
 
@@ -87,6 +85,7 @@ function resetUploadState() {
   progressBar.style.width = "0%";
   loadingText.textContent = stages[0].text;
   dropZone.classList.remove("has-image", "has-error", "is-dragover");
+  resultPanel.classList.remove("is-scrolling");
   uploadError.style.display = "";
   previewImage.removeAttribute("src");
   if (currentPreviewUrl) URL.revokeObjectURL(currentPreviewUrl);
@@ -191,6 +190,7 @@ function showResult(result) {
   chinesePrompt.value = result.chinesePrompt || chinesePrompt.value;
   englishPrompt.value = result.englishPrompt || englishPrompt.value;
   resultPanel.scrollTop = 0;
+  resultPanel.classList.remove("is-scrolling");
 }
 
 function showError() {
@@ -258,6 +258,7 @@ function mockResult() {
 
 copyChinese.addEventListener("click", () => copyText(chinesePrompt.value, "中文 Prompt 已复制"));
 copyEnglish.addEventListener("click", () => copyText(englishPrompt.value, "英文 Prompt 已复制"));
+resultPanel.addEventListener("scroll", showResultScrollbar);
 
 savePrompt.addEventListener("click", () => {
   const result = {
@@ -328,13 +329,12 @@ function renderCardHotzones() {
     const item = document.createElement("article");
     item.className = "card-hotzone";
     item.tabIndex = 0;
-    item.style.left = `${slot.left}px`;
-    item.style.top = `${slot.top}px`;
-    item.style.width = `${slot.width}px`;
-    item.style.height = `${slot.height}px`;
+    item.dataset.ratio = String(slot.height / slot.width);
+    item.style.setProperty("--enter-order", String(index));
     item.setAttribute("aria-label", card.title);
 
     item.innerHTML = `
+      <img class="card-base" src="${card.image}" alt="${card.title}" />
       <div class="card-info">
         <h2>${card.title}</h2>
         <div class="card-tags">${card.tags.map((tag) => `<span>${tag}</span>`).join("")}</div>
@@ -356,6 +356,46 @@ function renderCardHotzones() {
 
     cardHotzones.appendChild(item);
   });
+  scheduleCardLayout();
+}
+
+let cardLayoutFrame = 0;
+
+function scheduleCardLayout() {
+  if (!cardHotzones) return;
+  if (cardLayoutFrame) window.cancelAnimationFrame(cardLayoutFrame);
+  cardLayoutFrame = window.requestAnimationFrame(layoutCards);
+}
+
+function layoutCards() {
+  cardLayoutFrame = 0;
+  const cards = [...cardHotzones.querySelectorAll(".card-hotzone")];
+  if (!cards.length) return;
+
+  const gap = 16;
+  const designCardWidth = 282;
+  const availableWidth = Math.max(cardHotzones.clientWidth, 1);
+  const columnCount = Math.max(1, Math.floor((availableWidth + gap) / (designCardWidth + gap)));
+  const columnWidth = Math.floor((availableWidth - gap * (columnCount - 1)) / columnCount);
+  const columns = Array.from({ length: columnCount }, () => 0);
+
+  cards.forEach((card) => {
+    const ratio = Number(card.dataset.ratio || 1);
+    const columnIndex = columns.indexOf(Math.min(...columns));
+    const left = columnIndex * (columnWidth + gap);
+    const top = columns[columnIndex];
+    const height = Math.max(180, Math.round(columnWidth * ratio));
+
+    card.style.left = `${left}px`;
+    card.style.top = `${top}px`;
+    card.style.width = `${columnWidth}px`;
+    card.style.height = `${height}px`;
+    columns[columnIndex] += height + gap;
+  });
+
+  const contentHeight = Math.max(...columns) - gap;
+  cardHotzones.style.height = `${Math.max(0, contentHeight)}px`;
+  if (workspaceScroll) workspaceScroll.style.setProperty("--content-height", `${contentHeight}px`);
 }
 
 function showToast(message) {
@@ -363,6 +403,14 @@ function showToast(message) {
   toast.classList.add("is-show");
   if (toastTimer) window.clearTimeout(toastTimer);
   toastTimer = window.setTimeout(() => toast.classList.remove("is-show"), 1800);
+}
+
+function showResultScrollbar() {
+  resultPanel.classList.add("is-scrolling");
+  if (resultScrollTimer) window.clearTimeout(resultScrollTimer);
+  resultScrollTimer = window.setTimeout(() => {
+    resultPanel.classList.remove("is-scrolling");
+  }, 760);
 }
 
 function wait(ms) {
