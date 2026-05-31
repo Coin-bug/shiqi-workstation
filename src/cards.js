@@ -2,6 +2,8 @@ window.promptCards = [
   {
     id: "card-01",
     image: "assets/cards/image1.jpg",
+    imageWidth: 396,
+    imageHeight: 520,
     title: "叛逆甜酷玩偶少女肖像",
     tags: ["甜酷玩偶", "朋克妆容", "绒感皮肤"],
     prompt:
@@ -10,6 +12,8 @@ window.promptCards = [
   {
     id: "card-02",
     image: "assets/cards/image2.jpg",
+    imageWidth: 520,
+    imageHeight: 520,
     title: "炽红旋坠天使玩偶插画",
     tags: ["炽红背景", "高速动势", "天使恶童"],
     prompt:
@@ -18,6 +22,8 @@ window.promptCards = [
   {
     id: "card-03",
     image: "assets/cards/image3.jpg",
+    imageWidth: 390,
+    imageHeight: 520,
     title: "暗夜兔厨怪诞厨房剧场",
     tags: ["暗黑童话", "兔子厨师", "戏剧布光"],
     prompt:
@@ -26,6 +32,8 @@ window.promptCards = [
   {
     id: "card-04",
     image: "assets/cards/image4.jpg",
+    imageWidth: 520,
+    imageHeight: 520,
     title: "橙黑工业机械装置海报",
     tags: ["工业机甲", "橙黑配色", "硬面建模"],
     prompt:
@@ -34,6 +42,8 @@ window.promptCards = [
   {
     id: "card-05",
     image: "assets/cards/image5.jpg",
+    imageWidth: 336,
+    imageHeight: 520,
     title: "橙衣工业潮玩人物肖像",
     tags: ["潮玩肖像", "橙黑撞色", "厚重服装"],
     prompt:
@@ -42,6 +52,8 @@ window.promptCards = [
   {
     id: "card-06",
     image: "assets/cards/image6.jpg",
+    imageWidth: 341,
+    imageHeight: 520,
     title: "蓝色医疗圣像机械舱体",
     tags: ["医疗机械", "金属质感", "蓝色冷光"],
     prompt:
@@ -50,6 +62,8 @@ window.promptCards = [
   {
     id: "card-07",
     image: "assets/cards/image7.jpg",
+    imageWidth: 396,
+    imageHeight: 520,
     title: "西装兽面机械首领海报",
     tags: ["兽面机甲", "西装反差", "银黑质感"],
     prompt:
@@ -58,6 +72,8 @@ window.promptCards = [
   {
     id: "card-08",
     image: "assets/cards/image8.jpg",
+    imageWidth: 520,
+    imageHeight: 520,
     title: "黑夜彩羽灵鸟雕塑海报",
     tags: ["彩羽造型", "黑场聚焦", "弧线动势"],
     prompt:
@@ -66,6 +82,8 @@ window.promptCards = [
   {
     id: "card-09",
     image: "assets/cards/image9.jpg",
+    imageWidth: 415,
+    imageHeight: 520,
     title: "异常能量橙罐机械装置",
     tags: ["能量容器", "橙黑工业", "透明材质"],
     prompt:
@@ -74,6 +92,8 @@ window.promptCards = [
   {
     id: "card-10",
     image: "assets/cards/image10.jpg",
+    imageWidth: 518,
+    imageHeight: 520,
     title: "森林精灵治愈旅程插画",
     tags: ["森林童话", "治愈光感", "绿意场景"],
     prompt:

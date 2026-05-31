@@ -418,18 +418,29 @@ html.is-workspace .app {
   z-index: 2;
   height: 56px;
   display: flex;
-  align-items: flex-start;
-  padding: 10px 0 0 14px;
+  align-items: center;
+  padding: 0 0 0 22px;
   background: #050505;
   overflow: visible;
 }
 
 .sidebar-logo img {
-  width: 138px;
-  height: auto;
+  width: 189px;
+  height: 28px;
   display: block;
   object-fit: contain;
-  object-position: left top;
+}
+
+.sidebar-signature {
+  position: absolute;
+  left: 50%;
+  bottom: 42px;
+  width: 140px;
+  height: 47px;
+  z-index: 2;
+  pointer-events: none;
+  object-fit: contain;
+  transform: translateX(-50%);
 }
 
 .workspace-menu {
@@ -576,15 +587,15 @@ html.is-workspace .app {
 
 .workspace-titlebar {
   position: absolute;
-  left: 0;
-  right: 0;
-  top: 56px;
-  height: 86px;
+  left: 24px;
+  right: 24px;
+  top: 76px;
+  height: 48px;
   z-index: 23;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 26px 24px 0;
+  padding: 0;
   background: #040404;
 }
 
@@ -605,35 +616,43 @@ html.is-workspace .app {
 }
 
 .workspace-search {
-  width: 273px;
-  height: 36px;
-  display: grid;
-  grid-template-columns: 16px 1fr 1px 42px;
-  align-items: center;
-  gap: 10px;
-  padding: 0 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.07);
+  width: 282px;
+  height: 48px;
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.06);
   color: rgba(255, 255, 255, 0.54);
   font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
   font-size: 14px;
+  overflow: hidden;
 }
 
 .workspace-search img {
+  position: absolute;
+  left: 16px;
+  top: 16px;
   width: 16px;
   height: 16px;
 }
 
 .workspace-search input {
+  position: absolute;
+  left: 40px;
+  top: 0;
+  width: 179px;
   min-width: 0;
-  height: 34px;
+  height: 48px;
   border: 0;
   outline: 0;
   background: transparent;
   color: rgba(255, 255, 255, 0.86);
   font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
   font-size: 14px;
+  line-height: 14px;
+  padding: 0;
 }
 
 .workspace-search input::placeholder {
@@ -642,17 +661,21 @@ html.is-workspace .app {
 
 .workspace-search::after {
   content: "";
-  grid-column: 3;
-  grid-row: 1;
-  width: 1px;
+  position: absolute;
+  left: 219px;
+  top: 14px;
+  width: 2px;
   height: 20px;
   background: rgba(255, 255, 255, 0.18);
 }
 
 .workspace-search span {
-  grid-column: 4;
-  grid-row: 1;
-  justify-self: end;
+  position: absolute;
+  left: 237px;
+  top: 17px;
+  width: 29px;
+  line-height: 14px;
+  text-align: left;
 }
 
 .workspace-scroll {
@@ -689,9 +712,7 @@ html.is-workspace .app {
   height: 104px;
   z-index: 35;
   pointer-events: none;
-  background: linear-gradient(180deg, rgba(4, 4, 4, 0) 0%, rgba(4, 4, 4, 0.22) 18%, rgba(4, 4, 4, 0.5) 58%, rgba(4, 4, 4, 0.74) 100%);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.9) 100%);
 }
 
 .upload-button {
@@ -721,11 +742,8 @@ html.is-workspace .app {
   inset: 0;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(255, 190, 128, 0.78);
-  border-radius: 6px;
-  background: #ff7300;
+  background: url("../assets/source/切图/工作台_首页/标题栏_gongju_up_dikuang.svg") center / 100% 100% no-repeat;
   color: #fff;
-  transform: skewX(-5deg);
 }
 
 .upload-button:hover {
@@ -748,6 +766,7 @@ html.is-workspace .app {
   background: #111;
   animation: workspaceCardEnter 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
   animation-delay: calc(var(--enter-order, 0) * 56ms);
+  cursor: pointer;
 }
 
 .card-base {
@@ -764,37 +783,54 @@ html.is-workspace .app {
 .card-info {
   position: absolute;
   inset: 0;
-  padding: 82px 34px 32px 36px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 32px 36px;
   opacity: 0;
   overflow: hidden;
   border-radius: 7px;
-  background: rgba(255, 115, 0, 0.97);
+  background: #ff7300;
   transition: opacity 220ms ease, filter 220ms ease;
 }
 
 .card-hotzone:hover .card-info,
+.card-hotzone:focus .card-info,
 .card-hotzone:focus-within .card-info {
   opacity: 1;
 }
 
-.card-info::after {
+.card-info::before {
   content: "";
   position: absolute;
-  right: -20px;
-  top: 82px;
-  width: 110px;
-  height: 256px;
-  border: 2px solid rgba(255, 190, 130, 0.44);
-  border-radius: 10px;
-  transform: skew(-5deg);
+  top: 0;
+  right: 0;
+  width: 282px;
+  height: 376px;
+  background: url("../assets/source/切图/工作台_首页_hover/Frame 67.svg") right top / 282px 376px no-repeat;
+  pointer-events: none;
+}
+
+.card-content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .card-info h2 {
   position: relative;
-  z-index: 1;
-  margin: 0 0 24px;
+  margin: 0 0 10px;
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
   font-size: 24px;
   line-height: 1;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: #fff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -802,78 +838,66 @@ html.is-workspace .app {
 
 .card-tags {
   position: relative;
-  z-index: 1;
   display: flex;
   flex-wrap: nowrap;
-  gap: 8px;
-  margin-bottom: 14px;
+  gap: 0;
+  margin-bottom: 20px;
   overflow: hidden;
 }
 
 .card-tags span {
-  flex: 0 0 56px;
-  display: inline-grid;
-  place-items: center;
+  position: relative;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
   height: 22px;
-  padding: 0 6px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.2);
-  font-size: 12px;
-  font-weight: 500;
+  padding: 0 14px;
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0;
+  color: #fff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: clip;
+  z-index: 0;
+}
+
+.card-tags span:first-child {
+  margin-left: -2px;
+}
+
+.card-tags span + span {
+  margin-left: -7px;
+}
+
+.card-tags span::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("../assets/source/切图/工作台_首页_hover/hover 标签.svg") center / 100% 100% no-repeat;
+  z-index: -1;
 }
 
 .card-info p {
   position: relative;
-  z-index: 1;
   margin: 0;
   display: -webkit-box;
   font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
-  font-size: 13px;
-  line-height: 1.55;
-  font-weight: 600;
+  font-size: 10px;
+  line-height: 1.5;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: #fff;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: var(--prompt-lines, 7);
+  min-height: 0;
   max-height: none;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.card-copy {
-  position: absolute;
-  right: 16px;
-  top: 16px;
-  width: 32px;
-  height: 32px;
-  border: 0;
-  padding: 0;
-  background: transparent;
-  z-index: 2;
-}
-
-.card-copy img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  transition: opacity 180ms ease, transform 180ms ease;
-}
-
-.card-copy .copy-done {
-  opacity: 0;
-  transform: scale(0.92);
-}
-
-.card-copy.is-done .copy-default {
-  opacity: 0;
-  transform: scale(1.08);
-}
-
-.card-copy.is-done .copy-done {
-  opacity: 1;
-  transform: scale(1);
 }
 
 .saved-cards {
@@ -954,6 +978,8 @@ html.is-workspace .app {
   top: 0;
   transform: none;
   overflow: hidden;
+  backdrop-filter: blur(8px) brightness(0.52);
+  -webkit-backdrop-filter: blur(8px) brightness(0.52);
 }
 
 .modal-close {
@@ -974,22 +1000,11 @@ html.is-workspace .app {
   display: block;
 }
 
-.modal-workspace-bg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  filter: blur(8px) brightness(0.52);
-  transform: scale(1.03);
-  z-index: 1;
-}
-
 .page-mask {
   position: absolute;
   inset: 0;
   background: rgba(0, 0, 0, 0.52);
-  z-index: 2;
+  z-index: 1;
 }
 
 .upload-modal {
@@ -1004,7 +1019,7 @@ html.is-workspace .app {
   background: rgba(20, 20, 20, 0.94);
   backdrop-filter: blur(60px);
   box-shadow: 0 30px 90px rgba(0, 0, 0, 0.58), inset 0 0 8px rgba(255, 115, 0, 0.1);
-  z-index: 3;
+  z-index: 2;
 }
 
 .upload-modal::after {
@@ -1020,7 +1035,7 @@ html.is-workspace .app {
 .modal-bg {
   position: absolute;
   inset: 0;
-  background: url("../assets/source/切图/工作台_首页_hover_shangchuan_prompt_fenxi/添加图片_弹窗背景-tu.png") center / cover no-repeat;
+  background: var(--modal-bg-image, none) center / cover no-repeat;
   opacity: 1;
   pointer-events: none;
 }
@@ -1091,7 +1106,8 @@ html.is-workspace .app {
   display: none;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
 }
 
 .upload-error {

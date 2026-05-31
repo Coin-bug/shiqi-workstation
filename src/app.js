@@ -39,6 +39,7 @@ let loadingTextTimer = null;
 let currentPreviewUrl = "";
 let savedIndex = 0;
 let cardLayoutFrame = 0;
+let stopEntryShiqEffect = null;
 
 function fitStage() {
   const entryScale = Math.min(window.innerWidth / 1440, window.innerHeight / 900);
@@ -49,7 +50,7 @@ function fitStage() {
 window.addEventListener("resize", fitStage);
 fitStage();
 renderCardHotzones();
-initEntryShiqEffect();
+stopEntryShiqEffect = initEntryShiqEffect();
 
 startButton.addEventListener("click", () => {
   if (entryPage.classList.contains("is-exiting")) return;
@@ -59,6 +60,8 @@ startButton.addEventListener("click", () => {
     workspacePage.classList.add("is-active");
     document.documentElement.classList.add("is-workspace");
     document.body.classList.add("is-workspace");
+    stopEntryShiqEffect?.();
+    stopEntryShiqEffect = null;
     scheduleCardLayout();
   }, 260);
 });
@@ -74,6 +77,7 @@ uploadButton.addEventListener("click", () => {
 closeModal.addEventListener("click", closeUploadModal);
 
 function openModal() {
+  hydrateModalAssets();
   modalLayer.className = "modal-layer is-open is-idle";
   modalLayer.setAttribute("aria-hidden", "false");
   resetUploadState();
@@ -86,6 +90,18 @@ function closeUploadModal() {
   if (resultScrollTimer) window.clearTimeout(resultScrollTimer);
   resultScrollTimer = null;
   resultPanel.classList.remove("is-scrolling");
+  releaseModalAssets();
+}
+
+function hydrateModalAssets() {
+  modalLayer.style.setProperty(
+    "--modal-bg-image",
+    "url('assets/source/切图/工作台_首页_hover_shangchuan_prompt_fenxi/添加图片_弹窗背景-tu.png')"
+  );
+}
+
+function releaseModalAssets() {
+  modalLayer.style.removeProperty("--modal-bg-image");
 }
 
 function resetUploadState() {
@@ -328,29 +344,30 @@ function renderCardHotzones() {
     const item = document.createElement("article");
     item.className = "card-hotzone";
     item.tabIndex = 0;
-    item.dataset.ratio = String(slot.height / slot.width);
+    const imageRatio = card.imageWidth && card.imageHeight ? card.imageHeight / card.imageWidth : slot.height / slot.width;
+    item.dataset.ratio = String(imageRatio);
     item.style.setProperty("--enter-order", String(index));
-    item.setAttribute("aria-label", card.title);
+    item.setAttribute("role", "button");
+    item.setAttribute("aria-label", `复制 ${card.title} 的中文 Prompt`);
 
     item.innerHTML = `
       <img class="card-base" src="${card.image}" alt="${card.title}" />
       <div class="card-info">
-        <h2>${card.title}</h2>
-        <div class="card-tags">${card.tags.map((tag) => `<span>${tag}</span>`).join("")}</div>
-        <p>${card.prompt}</p>
-        <button class="card-copy" type="button" aria-label="复制中文 Prompt">
-          <img class="copy-default" src="assets/figma/copy-default.svg" alt="" />
-          <img class="copy-done" src="assets/figma/copy-done.svg" alt="" />
-        </button>
+        <div class="card-content">
+          <h2>${card.title}</h2>
+          <div class="card-tags">${card.tags.map((tag) => `<span>${tag}</span>`).join("")}</div>
+          <p>${card.prompt}</p>
+        </div>
       </div>
     `;
 
-    item.querySelector(".card-copy").addEventListener("click", async (event) => {
-      event.stopPropagation();
-      await copyText(card.prompt, "中文 Prompt 已复制");
-      const button = event.currentTarget;
-      button.classList.add("is-done");
-      window.setTimeout(() => button.classList.remove("is-done"), 1200);
+    item.addEventListener("click", () => {
+      copyText(card.prompt, "中文 Prompt 已复制");
+    });
+    item.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      copyText(card.prompt, "中文 Prompt 已复制");
     });
 
     cardHotzones.appendChild(item);
@@ -381,8 +398,9 @@ function layoutCards() {
     const columnIndex = columns.indexOf(Math.min(...columns));
     const left = columnIndex * (columnWidth + gap);
     const top = columns[columnIndex];
-    const height = Math.max(180, Math.round(columnWidth * ratio));
-    const promptLines = Math.max(2, Math.floor((height - 198) / 20));
+    const naturalHeight = Math.round(columnWidth * ratio);
+    const height = Math.min(480, naturalHeight);
+    const promptLines = Math.max(1, Math.floor((height - 140) / 15));
 
     card.style.left = `${left}px`;
     card.style.top = `${top}px`;
@@ -425,13 +443,13 @@ function initEntryShiqEffect() {
 
   const beamCtx = beamCanvas.getContext("2d", { alpha: true });
   const fogCtx = fogCanvas.getContext("2d", { alpha: true });
-  if (!beamCtx || !fogCtx) return;
+  if (!beamCtx || !fogCtx) return null;
 
   const logoBounds = { x: 0, y: 0, width: 0, height: 0 };
   const pointer = { x: 0, y: 0, targetX: 0, targetY: 0 };
   const maskCanvas = document.createElement("canvas");
   const maskCtx = maskCanvas.getContext("2d");
-  if (!maskCtx) return;
+  if (!maskCtx) return null;
   const logoPaths = [...logo.querySelectorAll("path")].map((path) => new Path2D(path.getAttribute("d") || ""));
   const fogPuffs = Array.from({ length: 32 }, (_, index) => ({
     seed: index * 91.7,
@@ -450,6 +468,8 @@ function initEntryShiqEffect() {
   ];
   let renderScale = 1;
   let maskIsDirty = true;
+  let effectIsActive = true;
+  let rafId = 0;
 
   function resizeShiqCanvas() {
     const rect = fogCanvas.getBoundingClientRect();
@@ -621,6 +641,7 @@ function initEntryShiqEffect() {
   }
 
   function renderShiq(time = 0) {
+    if (!effectIsActive || document.documentElement.classList.contains("is-workspace")) return;
     const width = fogCanvas.clientWidth;
     const height = fogCanvas.clientHeight;
     const seconds = time / 1000;
@@ -655,7 +676,7 @@ function initEntryShiqEffect() {
       drawDarkPuff(x + Math.cos(puff.phase) * radius * 0.18, y + Math.sin(puff.phase) * radius * 0.12, radius * 0.54, 0.1 + localPulse * 0.06);
     });
     clipFogToLogo(width, height);
-    window.requestAnimationFrame(renderShiq);
+    rafId = window.requestAnimationFrame(renderShiq);
   }
 
   const updatePointer = (event) => {
@@ -668,5 +689,15 @@ function initEntryShiqEffect() {
   entryPage.addEventListener("pointermove", updatePointer);
   window.addEventListener("load", resizeShiqCanvas);
   resizeShiqCanvas();
-  window.requestAnimationFrame(renderShiq);
+  rafId = window.requestAnimationFrame(renderShiq);
+
+  return () => {
+    effectIsActive = false;
+    if (rafId) window.cancelAnimationFrame(rafId);
+    window.removeEventListener("resize", resizeShiqCanvas);
+    window.removeEventListener("load", resizeShiqCanvas);
+    entryPage.removeEventListener("pointermove", updatePointer);
+    beamCtx.clearRect(0, 0, beamCanvas.clientWidth, beamCanvas.clientHeight);
+    fogCtx.clearRect(0, 0, fogCanvas.clientWidth, fogCanvas.clientHeight);
+  };
 }

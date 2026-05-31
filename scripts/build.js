@@ -4,9 +4,8 @@ const required = [
   "index.html",
   "src/styles.css",
   "src/app.js",
-  "assets/figma/workspace.png",
-  "assets/figma/modal-loading.png",
-  "assets/figma/modal-complete.png"
+  "assets/figma/copy-default.svg",
+  "assets/figma/copy-done.svg"
 ];
 
 for (const file of required) {
