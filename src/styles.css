@@ -417,14 +417,27 @@ html.is-workspace .app {
   position: relative;
   z-index: 2;
   height: 56px;
-  display: flex;
-  align-items: center;
   padding: 0 0 0 22px;
-  background: #050505;
+  background: #000;
   overflow: visible;
 }
 
+.sidebar-logo::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 216px;
+  height: 56px;
+  background: url("../assets/source/切图/工作台_首页/导航栏_背景纹理.png") left top / 888px 56px no-repeat;
+  pointer-events: none;
+}
+
 .sidebar-logo img {
+  position: absolute;
+  left: 22px;
+  top: 22px;
+  z-index: 1;
   width: 189px;
   height: 28px;
   display: block;
@@ -449,7 +462,7 @@ html.is-workspace .app {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding-top: 24px;
+  padding-top: 34px;
   width: 216px;
 }
 
@@ -551,14 +564,12 @@ html.is-workspace .app {
 
 .topbar-texture {
   position: absolute;
-  left: 0;
+  left: -216px;
   top: 0;
-  width: min(888px, 72vw);
+  width: 888px;
   height: 56px;
-  opacity: 0.85;
-  background:
-    linear-gradient(90deg, rgba(0, 0, 0, 0) 78%, #000 100%),
-    url("../assets/source/切图/工作台_首页/导航栏_背景纹理.png") left top / 888px 56px no-repeat;
+  opacity: 1;
+  background: url("../assets/source/切图/工作台_首页/导航栏_背景纹理.png") left top / 888px 56px no-repeat;
 }
 
 .api-key-button {
@@ -571,13 +582,27 @@ html.is-workspace .app {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 4px;
+  border: 0;
+  border-radius: 0;
   background: rgba(0, 0, 0, 0.34);
   color: rgba(255, 255, 255, 0.54);
   font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
   font-size: 14px;
   font-weight: 400;
+}
+
+.api-key-button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("../assets/source/切图/工作台_首页/导航栏_API Key_miaobian.svg") center / 100% 100% no-repeat;
+  pointer-events: none;
+}
+
+.api-key-button span,
+.api-key-button img {
+  position: relative;
+  z-index: 1;
 }
 
 .api-key-button img {
@@ -664,9 +689,9 @@ html.is-workspace .app {
   position: absolute;
   left: 219px;
   top: 14px;
-  width: 2px;
+  width: 2.5px;
   height: 20px;
-  background: rgba(255, 255, 255, 0.18);
+  background: url("../assets/source/切图/工作台_首页/标题栏_gongju_search_divider.svg") center / 100% 100% no-repeat;
 }
 
 .workspace-search span {
@@ -709,7 +734,7 @@ html.is-workspace .app {
   left: 0;
   right: 0;
   bottom: 0;
-  height: 104px;
+  height: 120px;
   z-index: 35;
   pointer-events: none;
   background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.9) 100%);
@@ -717,27 +742,27 @@ html.is-workspace .app {
 
 .upload-button {
   position: absolute;
-  left: 50%;
-  bottom: 32px;
-  width: 164px;
-  height: 48px;
+  left: calc(50% + 10px);
+  bottom: 50px;
+  width: 184px;
+  height: 60px;
   border: 0;
-  border-radius: 0;
+  border-radius: 10px;
   background: transparent;
   color: #fff;
-  box-shadow: 6px 6px 3.45px rgba(25, 24, 40, 0.25);
+  overflow: hidden;
   font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
   font-size: 16px;
   font-weight: 600;
   line-height: 16px;
-  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), filter 180ms ease;
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
   transform: translateX(-50%);
   z-index: 40;
   isolation: isolate;
 }
 
 .upload-button::after {
-  content: "上传参考图";
+  content: "点击/拖拽上传";
   position: absolute;
   inset: 0;
   display: grid;
@@ -748,7 +773,6 @@ html.is-workspace .app {
 
 .upload-button:hover {
   transform: translateX(-50%) scale(1.035);
-  filter: brightness(1.06);
 }
 
 .card-hotzones {
@@ -809,7 +833,17 @@ html.is-workspace .app {
   width: 282px;
   height: 376px;
   background: url("../assets/source/切图/工作台_首页_hover/Frame 67.svg") right top / 282px 376px no-repeat;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 240ms ease, transform 360ms cubic-bezier(0.16, 1, 0.3, 1);
   pointer-events: none;
+}
+
+.card-hotzone:hover .card-info::before,
+.card-hotzone:focus .card-info::before,
+.card-hotzone:focus-within .card-info::before {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .card-content {
@@ -834,6 +868,10 @@ html.is-workspace .app {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 220ms ease, transform 360ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: 24ms;
 }
 
 .card-tags {
@@ -843,6 +881,10 @@ html.is-workspace .app {
   gap: 0;
   margin-bottom: 20px;
   overflow: hidden;
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 220ms ease, transform 360ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: 72ms;
 }
 
 .card-tags span {
@@ -898,6 +940,23 @@ html.is-workspace .app {
   max-height: none;
   overflow: hidden;
   text-overflow: ellipsis;
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 220ms ease, transform 360ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: 128ms;
+}
+
+.card-hotzone:hover .card-info h2,
+.card-hotzone:hover .card-tags,
+.card-hotzone:hover .card-info p,
+.card-hotzone:focus .card-info h2,
+.card-hotzone:focus .card-tags,
+.card-hotzone:focus .card-info p,
+.card-hotzone:focus-within .card-info h2,
+.card-hotzone:focus-within .card-tags,
+.card-hotzone:focus-within .card-info p {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .saved-cards {
