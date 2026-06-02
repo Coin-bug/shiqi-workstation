@@ -4,14 +4,18 @@ const entryPage = document.querySelector("#entryPage");
 const workspacePage = document.querySelector("#workspacePage");
 const startButton = document.querySelector("#startButton");
 const uploadButton = document.querySelector("#uploadButton");
+const workspaceMain = document.querySelector(".workspace-main");
+const workspaceTitleText = document.querySelector(".workspace-title span");
 const modalLayer = document.querySelector("#modalLayer");
 const closeModal = document.querySelector("#closeModal");
 const dropZone = document.querySelector("#dropZone");
 const fileInput = document.querySelector("#fileInput");
 const previewImage = document.querySelector("#previewImage");
 const uploadError = document.querySelector("#uploadError");
+const retryUploadButton = document.querySelector("#retryUploadButton");
 const loadingText = document.querySelector("#loadingText");
 const loadingCopy = document.querySelector("#loadingCopy");
+const loadingStar = document.querySelector(".loading-star");
 const progressBar = document.querySelector("#progressBar");
 const resultPanel = document.querySelector("#resultPanel");
 const titleInput = document.querySelector("#titleInput");
@@ -19,27 +23,53 @@ const tagsInput = document.querySelector("#tagsInput");
 const chinesePrompt = document.querySelector("#chinesePrompt");
 const englishPrompt = document.querySelector("#englishPrompt");
 const savePrompt = document.querySelector("#savePrompt");
+const savePromptLabel = savePrompt?.querySelector(".save-button-label");
 const copyChinese = document.querySelector("#copyChinese");
 const copyEnglish = document.querySelector("#copyEnglish");
 const toast = document.querySelector("#toast");
 const cardHotzones = document.querySelector("#cardHotzones");
 const savedCards = document.querySelector("#savedCards");
 const workspaceScroll = document.querySelector("#workspaceScroll");
+const workspaceDropOverlay = document.querySelector("#workspaceDropOverlay");
+const workspaceDropTitle = document.querySelector("#workspaceDropTitle");
 
 const stages = [
   { max: 30, text: "正在识别画面主体" },
   { max: 60, text: "正在拆解风格与构图" },
   { max: 100, text: "正在生成完整 Prompt" }
 ];
+const freezeAnalyzeLoading = Boolean(window.__WORKSTATION_CONFIG__?.freezeAnalyzeLoading);
 
 let progressTimer = null;
 let toastTimer = null;
 let resultScrollTimer = null;
 let loadingTextTimer = null;
+let loadingStarSpinTimer = null;
+let analyzeMotionTimer = null;
+let saveTimer = null;
+let workspaceDragHideTimer = null;
+let workspaceScrollTimer = null;
+let copyButtonResetTimer = null;
+let activeAnalyzeController = null;
 let currentPreviewUrl = "";
+let currentImageDataUrl = "";
+let currentUploadFile = null;
+let generatedResult = null;
+let uploadState = "idle";
+let workspaceDragState = "idle";
+let activeAnalyzeRun = 0;
 let savedIndex = 0;
 let cardLayoutFrame = 0;
 let stopEntryShiqEffect = null;
+
+const supportedImageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+const analyzeMotionDuration = 280;
+const minimumAnalyzeDuration = 1420;
+const analyzeRequestTimeout = 45000;
+const analyzeEndpointPath = "/.netlify/functions/analyze-image";
+const defaultAnalyzeApiBase = "https://shiqi-workstation.netlify.app";
+const maxAnalyzeImageDimension = 1600;
+const maxAnalyzeAttempts = 3;
 
 function fitStage() {
   const entryScale = Math.min(window.innerWidth / 1440, window.innerHeight / 900);
@@ -66,124 +96,330 @@ startButton.addEventListener("click", () => {
   }, 260);
 });
 
-document.querySelectorAll(".menu-hit").forEach((button) => {
-  button.addEventListener("click", (event) => event.preventDefault());
+const menuButtons = [...document.querySelectorAll(".menu-hit")];
+
+menuButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    setActiveWorkspaceMenu(button);
+  });
 });
 
 uploadButton.addEventListener("click", () => {
-  resetUploadState();
-  fileInput.click();
+  openModal();
 });
 closeModal.addEventListener("click", closeUploadModal);
+retryUploadButton?.addEventListener("click", (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  resetUploadState();
+  setUploadState("filePickerOpen");
+  fileInput.click();
+});
 
 function openModal() {
-  hydrateModalAssets();
-  modalLayer.className = "modal-layer is-open is-idle";
+  clearWorkspaceDragState();
   modalLayer.setAttribute("aria-hidden", "false");
   resetUploadState();
+  setUploadState("uploadModalEmpty");
+}
+
+function setActiveWorkspaceMenu(activeButton) {
+  if (!activeButton) return;
+  menuButtons.forEach((button) => {
+    button.classList.toggle("is-selected", button === activeButton);
+  });
+
+  const title = activeButton.dataset.title || activeButton.textContent?.trim() || "全部提示词";
+  const label = activeButton.dataset.label || activeButton.textContent?.trim() || title;
+  if (workspaceTitleText) workspaceTitleText.textContent = title;
+  if (workspaceMain) workspaceMain.setAttribute("aria-label", label);
 }
 
 function closeUploadModal() {
-  modalLayer.className = "modal-layer";
+  activeAnalyzeRun += 1;
+  abortActiveAnalyzeRequest();
+  clearWorkspaceDragState();
+  setUploadState("idle");
   modalLayer.setAttribute("aria-hidden", "true");
+  modalLayer.className = "modal-layer";
   stopProgress();
+  if (analyzeMotionTimer) window.clearTimeout(analyzeMotionTimer);
+  analyzeMotionTimer = null;
+  if (saveTimer) window.clearTimeout(saveTimer);
+  saveTimer = null;
   if (resultScrollTimer) window.clearTimeout(resultScrollTimer);
   resultScrollTimer = null;
   resultPanel.classList.remove("is-scrolling");
-  releaseModalAssets();
+  resetUploadState();
 }
 
-function hydrateModalAssets() {
-  modalLayer.style.setProperty(
-    "--modal-bg-image",
-    "url('assets/source/切图/工作台_首页_hover_shangchuan_prompt_fenxi/添加图片_弹窗背景-tu.png')"
-  );
-}
+function setUploadState(state) {
+  uploadState = state;
+  const classMap = {
+    idle: "",
+    uploadModalEmpty: "is-open is-idle",
+    modalDragReady: "is-open is-idle is-drag-ready",
+    filePickerOpen: "is-open is-idle is-file-picker-open",
+    preAnalyzeMotion: "is-open is-preparing",
+    analyzing: "is-open is-loading",
+    result: "is-open is-complete",
+    error: "is-open is-error"
+  };
 
-function releaseModalAssets() {
-  modalLayer.style.removeProperty("--modal-bg-image");
+  modalLayer.className = `modal-layer ${classMap[state] || ""}`.trim();
+  modalLayer.dataset.uploadState = state;
 }
 
 function resetUploadState() {
   stopProgress();
+  if (analyzeMotionTimer) window.clearTimeout(analyzeMotionTimer);
+  analyzeMotionTimer = null;
+  if (loadingTextTimer) window.clearTimeout(loadingTextTimer);
+  loadingTextTimer = null;
+  if (loadingStarSpinTimer) window.clearTimeout(loadingStarSpinTimer);
+  loadingStarSpinTimer = null;
+  generatedResult = null;
+  currentUploadFile = null;
+  currentImageDataUrl = "";
+  savePrompt.disabled = false;
+  setSaveButtonLabel("保存");
+  resetCopyButtons();
+  chinesePrompt.style.height = "";
+  englishPrompt.style.top = "";
+  englishPrompt.style.height = "";
+  document.documentElement.style.removeProperty("--english-field-top");
   progressBar.style.width = "0%";
+  loadingCopy?.classList.remove("is-changing");
+  if (loadingCopy) {
+    loadingCopy.style.width = "";
+    loadingCopy.style.transition = "";
+  }
+  if (loadingStar) {
+    loadingStar.classList.remove("is-spinning");
+    loadingStar.style.left = "";
+    loadingStar.style.transition = "";
+  }
   setLoadingStage(stages[0].text, true);
   dropZone.classList.remove("has-image", "has-error", "is-dragover");
   resultPanel.classList.remove("is-scrolling");
-  uploadError.style.display = "";
   previewImage.removeAttribute("src");
   if (currentPreviewUrl) URL.revokeObjectURL(currentPreviewUrl);
   currentPreviewUrl = "";
   fileInput.value = "";
 }
 
-dropZone.addEventListener("click", () => {
+dropZone.addEventListener("click", (event) => {
+  if (uploadState === "analyzing" || uploadState === "preAnalyzeMotion" || uploadState === "result") {
+    event.preventDefault();
+    return;
+  }
   if (dropZone.classList.contains("has-error")) resetUploadState();
+  setUploadState("filePickerOpen");
 });
 
 dropZone.addEventListener("dragover", (event) => {
   event.preventDefault();
+  if (!isModalOpen() || uploadState === "analyzing" || uploadState === "preAnalyzeMotion") return;
   dropZone.classList.add("is-dragover");
+  setUploadState("modalDragReady");
 });
 
-dropZone.addEventListener("dragleave", () => {
+dropZone.addEventListener("dragleave", (event) => {
+  if (dropZone.contains(event.relatedTarget)) return;
   dropZone.classList.remove("is-dragover");
+  if (uploadState === "modalDragReady") setUploadState("uploadModalEmpty");
 });
 
 dropZone.addEventListener("drop", (event) => {
   event.preventDefault();
+  event.stopPropagation();
   dropZone.classList.remove("is-dragover");
-  const file = event.dataTransfer.files?.[0];
-  if (file) handleFile(file);
+  const file = getFirstSupportedImage(event.dataTransfer?.files);
+  if (file) {
+    handleFile(file);
+    return;
+  }
+  showToast("仅支持 JPG、PNG、WEBP 格式图片");
+  if (uploadState === "modalDragReady") setUploadState("uploadModalEmpty");
 });
 
 fileInput.addEventListener("change", () => {
-  const file = fileInput.files?.[0];
-  if (file) handleFile(file);
+  const file = getFirstSupportedImage(fileInput.files);
+  if (file) {
+    handleFile(file);
+    return;
+  }
+  if (fileInput.files?.length) showToast("仅支持 JPG、PNG、WEBP 格式图片");
+  setUploadState("uploadModalEmpty");
+});
+
+document.addEventListener("dragenter", (event) => {
+  if (!hasDraggedFiles(event.dataTransfer)) return;
+  event.preventDefault();
+  if (!isWorkspaceActive() || isModalOpen()) return;
+  setWorkspaceDragState(isPointInsideWorkspace(event.clientX, event.clientY) ? "release" : "drag");
+  keepWorkspaceDragOverlayAlive();
 });
 
 document.addEventListener("dragover", (event) => {
-  if (event.dataTransfer?.types?.includes("Files")) {
-    event.preventDefault();
+  if (!hasDraggedFiles(event.dataTransfer)) return;
+  event.preventDefault();
+  if (!isWorkspaceActive() || isModalOpen()) return;
+  setWorkspaceDragState(isPointInsideWorkspace(event.clientX, event.clientY) ? "release" : "drag");
+  keepWorkspaceDragOverlayAlive();
+});
+
+document.addEventListener("dragleave", (event) => {
+  if (!hasDraggedFiles(event.dataTransfer)) return;
+  if (
+    event.clientX <= 0 ||
+    event.clientY <= 0 ||
+    event.clientX >= window.innerWidth ||
+    event.clientY >= window.innerHeight
+  ) {
+    clearWorkspaceDragState();
   }
 });
 
 document.addEventListener("drop", (event) => {
-  const file = event.dataTransfer?.files?.[0];
+  if (!hasDraggedFiles(event.dataTransfer)) return;
+  event.preventDefault();
+  clearWorkspaceDragState();
+  if (isModalOpen()) return;
+  if (!isWorkspaceActive() || !isPointInsideWorkspace(event.clientX, event.clientY)) return;
+  const file = getFirstSupportedImage(event.dataTransfer.files);
   if (file) {
-    event.preventDefault();
+    openModal();
     handleFile(file);
+    return;
   }
+  showToast("仅支持 JPG、PNG、WEBP 格式图片");
+});
+
+document.addEventListener("paste", (event) => {
+  if (!isModalOpen() || uploadState === "analyzing" || uploadState === "preAnalyzeMotion") return;
+  const file = getFirstSupportedImage(event.clipboardData?.files);
+  if (!file) return;
+  event.preventDefault();
+  handleFile(file);
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && isModalOpen()) closeUploadModal();
 });
 
 async function handleFile(file) {
-  if (!file.type.startsWith("image/")) {
-    showError();
+  if (!isSupportedImage(file)) {
+    showToast("仅支持 JPG、PNG、WEBP 格式图片");
+    setUploadState(isModalOpen() ? "uploadModalEmpty" : "idle");
     return;
   }
 
+  const runId = activeAnalyzeRun + 1;
+  activeAnalyzeRun = runId;
+  abortActiveAnalyzeRequest();
+  currentUploadFile = file;
+  generatedResult = null;
   if (currentPreviewUrl) URL.revokeObjectURL(currentPreviewUrl);
   currentPreviewUrl = URL.createObjectURL(file);
   previewImage.src = currentPreviewUrl;
   modalLayer.setAttribute("aria-hidden", "false");
   dropZone.classList.add("has-image");
   dropZone.classList.remove("has-error");
-  modalLayer.className = "modal-layer is-open is-loading";
+  setLoadingStage(stages[0].text, true);
+  progressBar.style.width = "0%";
+  setUploadState("preAnalyzeMotion");
 
-  startProgress();
+  if (analyzeMotionTimer) window.clearTimeout(analyzeMotionTimer);
+  analyzeMotionTimer = window.setTimeout(() => {
+    if (activeAnalyzeRun !== runId || uploadState === "idle") return;
+    setUploadState("analyzing");
+    startProgress();
+  }, analyzeMotionDuration);
 
+  if (freezeAnalyzeLoading) return;
+
+  const startedAt = performance.now();
   try {
+    currentImageDataUrl = await fileToDataUrl(file).catch(() => "");
     const result = await analyzeImage(file);
+    const elapsed = performance.now() - startedAt;
+    await wait(Math.max(0, minimumAnalyzeDuration - elapsed));
+    if (activeAnalyzeRun !== runId || uploadState === "idle") return;
     finishProgress();
-    await wait(360);
+    await wait(260);
+    if (activeAnalyzeRun !== runId || uploadState === "idle") return;
+    generatedResult = result;
     showResult(result);
   } catch {
+    if (activeAnalyzeRun !== runId || uploadState === "idle") return;
     showError();
   }
 }
 
+function isModalOpen() {
+  return modalLayer.classList.contains("is-open");
+}
+
+function isWorkspaceActive() {
+  return workspacePage.classList.contains("is-active");
+}
+
+function hasDraggedFiles(dataTransfer) {
+  return Array.from(dataTransfer?.types || []).includes("Files");
+}
+
+function isSupportedImage(file) {
+  return Boolean(file && supportedImageTypes.has(file.type));
+}
+
+function isPointInsideWorkspace(clientX, clientY) {
+  if (!workspaceMain) return false;
+  const bounds = workspaceMain.getBoundingClientRect();
+  return clientX >= bounds.left && clientX <= bounds.right && clientY >= bounds.top && clientY <= bounds.bottom;
+}
+
+function setWorkspaceDragState(state) {
+  if (!workspaceDropOverlay || workspaceDragState === state) return;
+  workspaceDragState = state;
+  const visible = state === "drag" || state === "release";
+  workspaceDropOverlay.className = `workspace-drop-overlay${visible ? " is-visible" : ""}${state === "release" ? " is-release" : ""}`;
+  workspaceDropOverlay.setAttribute("aria-hidden", visible ? "false" : "true");
+  if (workspaceDropTitle) {
+    workspaceDropTitle.textContent = state === "release" ? "松手以分析图片" : "拖拽图片到此处";
+  }
+}
+
+function keepWorkspaceDragOverlayAlive() {
+  if (workspaceDragHideTimer) window.clearTimeout(workspaceDragHideTimer);
+  workspaceDragHideTimer = window.setTimeout(() => {
+    clearWorkspaceDragState();
+  }, 120);
+}
+
+function clearWorkspaceDragState() {
+  if (workspaceDragHideTimer) window.clearTimeout(workspaceDragHideTimer);
+  workspaceDragHideTimer = null;
+  setWorkspaceDragState("idle");
+}
+
+function getFirstSupportedImage(fileList) {
+  return [...(fileList || [])].find(isSupportedImage) || null;
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => resolve(reader.result || ""));
+    reader.addEventListener("error", reject);
+    reader.readAsDataURL(file);
+  });
+}
+
 function startProgress() {
   stopProgress();
+  syncLoadingCopyWidth(true);
+  window.requestAnimationFrame(() => syncLoadingCopyWidth(true));
   let value = 0;
   progressTimer = window.setInterval(() => {
     value = Math.min(value + Math.random() * 4.2 + 1.2, 94);
@@ -212,40 +448,306 @@ function setLoadingStage(text, immediate = false) {
   if (loadingTextTimer) window.clearTimeout(loadingTextTimer);
   if (immediate || !loadingCopy) {
     loadingText.textContent = text;
+    syncLoadingCopyWidth(true);
     return;
   }
 
+  triggerLoadingStarSpin();
+  syncLoadingCopyWidth(true);
   loadingCopy.classList.add("is-changing");
   loadingTextTimer = window.setTimeout(() => {
     loadingText.textContent = text;
+    syncLoadingCopyWidth();
     loadingCopy.classList.remove("is-changing");
     loadingTextTimer = null;
   }, 120);
 }
 
+function syncLoadingCopyWidth(immediate = false) {
+  if (!loadingCopy || !loadingText) return;
+  const textWidth = Math.ceil(loadingText.scrollWidth || loadingText.getBoundingClientRect().width);
+  if (!textWidth) return;
+  const nextWidth = `${textWidth}px`;
+  const nextStarLeft = `${Math.max(0, textWidth - 8)}px`;
+
+  if (!immediate) {
+    loadingCopy.style.width = nextWidth;
+    if (loadingStar) loadingStar.style.left = nextStarLeft;
+    return;
+  }
+
+  const previousTransition = loadingCopy.style.transition;
+  const previousStarTransition = loadingStar?.style.transition || "";
+  loadingCopy.style.transition = "none";
+  loadingCopy.style.width = nextWidth;
+  if (loadingStar) {
+    loadingStar.style.transition = "none";
+    loadingStar.style.left = nextStarLeft;
+  }
+  loadingCopy.getBoundingClientRect();
+  loadingCopy.style.transition = previousTransition;
+  if (loadingStar) loadingStar.style.transition = previousStarTransition;
+}
+
+function triggerLoadingStarSpin() {
+  if (!loadingStar) return;
+  loadingStar.classList.remove("is-spinning");
+  void loadingStar.offsetWidth;
+  loadingStar.classList.add("is-spinning");
+  if (loadingStarSpinTimer) window.clearTimeout(loadingStarSpinTimer);
+  loadingStarSpinTimer = window.setTimeout(() => {
+    loadingStar.classList.remove("is-spinning");
+    loadingStarSpinTimer = null;
+  }, 420);
+}
+
 function showResult(result) {
-  modalLayer.className = "modal-layer is-open is-complete";
+  setUploadState("result");
   titleInput.value = result.title || "静谧之中听见野性";
   tagsInput.value = (result.tags || []).slice(0, 3).join("；") || "野性静音；可爱拟人；高端耳机";
   chinesePrompt.value = result.chinesePrompt || chinesePrompt.value;
   englishPrompt.value = result.englishPrompt || englishPrompt.value;
+  window.requestAnimationFrame(fitResultPanelContent);
   resultPanel.scrollTop = 0;
   resultPanel.classList.remove("is-scrolling");
 }
 
+function fitResultPanelContent() {
+  const minChineseHeight = 124;
+  const minEnglishHeight = 124;
+  chinesePrompt.style.height = "auto";
+  englishPrompt.style.height = "auto";
+  chinesePrompt.style.height = `${Math.max(minChineseHeight, chinesePrompt.scrollHeight)}px`;
+  englishPrompt.style.top = `${chinesePrompt.offsetTop + chinesePrompt.offsetHeight + 52}px`;
+  englishPrompt.style.height = `${Math.max(minEnglishHeight, englishPrompt.scrollHeight)}px`;
+  const englishLabelTop = englishPrompt.offsetTop - 28;
+  document.documentElement.style.setProperty("--english-field-top", `${englishLabelTop}px`);
+}
+
 function showError() {
   stopProgress();
-  modalLayer.className = "modal-layer is-open is-error";
+  setUploadState("error");
   modalLayer.setAttribute("aria-hidden", "false");
   dropZone.classList.remove("has-image");
   dropZone.classList.add("has-error");
-  uploadError.style.display = "block";
   showToast("上传失败，请重新上传");
 }
 
 async function analyzeImage(file) {
+  const endpoint = resolveAnalyzeEndpoint();
+  if (endpoint) {
+    return requestImageAnalysis(file, endpoint);
+  }
   await wait(880);
   return mockResult(file);
+}
+
+async function requestImageAnalysis(file, endpoint) {
+  const payload = await createAnalyzePayload(file);
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= maxAnalyzeAttempts; attempt += 1) {
+    const controller = new AbortController();
+    activeAnalyzeController = controller;
+    let didTimeout = false;
+    const timeoutId = window.setTimeout(() => {
+      didTimeout = true;
+      controller.abort();
+    }, analyzeRequestTimeout);
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        mode: "cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        const detail = await response.text().catch(() => "");
+        const error = new Error(`analyze request failed: ${response.status}${detail ? ` ${detail}` : ""}`);
+        error.status = response.status;
+        throw error;
+      }
+
+      const result = normalizeAnalyzeResult(await response.json());
+      if (!result.chinesePrompt && !result.englishPrompt) {
+        throw new Error("empty analyze result");
+      }
+
+      return result;
+    } catch (error) {
+      if (didTimeout) {
+        error = Object.assign(new Error("timeout"), { status: 408 });
+      }
+      if (isAbortError(error)) throw error;
+      lastError = error;
+      if (attempt >= maxAnalyzeAttempts || !shouldRetryAnalyzeError(error)) {
+        console.error("Analyze request failed", error);
+        throw error;
+      }
+      await wait(320 * attempt);
+    } finally {
+      window.clearTimeout(timeoutId);
+      if (activeAnalyzeController === controller) activeAnalyzeController = null;
+    }
+  }
+
+  throw lastError || new Error("analyze request failed");
+}
+
+function resolveAnalyzeEndpoint() {
+  const configured = readConfiguredAnalyzeEndpoint();
+  if (configured) return configured;
+  if (isLocalPreview()) return `${defaultAnalyzeApiBase}${analyzeEndpointPath}`;
+  return analyzeEndpointPath;
+}
+
+function readConfiguredAnalyzeEndpoint() {
+  const params = new URLSearchParams(window.location.search);
+  const runtimeConfig = window.WORKSTATION_ANALYZE_API_URL || window.__WORKSTATION_CONFIG__?.analyzeApiUrl || "";
+  const runtimeBase = window.WORKSTATION_ANALYZE_API_BASE || window.__WORKSTATION_CONFIG__?.analyzeApiBase || "";
+  const direct =
+    params.get("analyzeApi") ||
+    params.get("analyzeApiUrl") ||
+    runtimeConfig ||
+    safeStorageGet("workstationAnalyzeApiUrl");
+  if (direct) return normalizeAnalyzeEndpoint(direct, false);
+
+  const base =
+    params.get("analyzeApiBase") ||
+    runtimeBase ||
+    safeStorageGet("workstationAnalyzeApiBase");
+  if (base) return normalizeAnalyzeEndpoint(base, true);
+  return "";
+}
+
+function normalizeAnalyzeEndpoint(value, appendPath) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  if (/^https?:\/\//i.test(raw)) {
+    if (!appendPath) return raw;
+    return `${raw.replace(/\/+$/, "")}${analyzeEndpointPath}`;
+  }
+
+  return appendPath ? "" : raw;
+}
+
+function isLocalPreview() {
+  return (
+    window.location.protocol === "file:" ||
+    ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname)
+  );
+}
+
+function safeStorageGet(key) {
+  try {
+    return window.localStorage.getItem(key) || "";
+  } catch {
+    return "";
+  }
+}
+
+function normalizeAnalyzeResult(result) {
+  const tags = Array.isArray(result?.tags)
+    ? result.tags
+    : String(result?.tags || "")
+        .split(/[;；,，]/)
+        .map((tag) => tag.trim())
+        .filter(Boolean);
+
+  return {
+    title: String(result?.title || "").trim() || "未命名 Prompt",
+    tags: tags.slice(0, 3).map((tag) => String(tag).trim()).filter(Boolean),
+    chinesePrompt: String(result?.chinesePrompt || "").trim(),
+    englishPrompt: String(result?.englishPrompt || "").trim()
+  };
+}
+
+async function createAnalyzePayload(file) {
+  const originalDataUrl = currentImageDataUrl || (await fileToDataUrl(file));
+  const processedDataUrl = await optimizeAnalyzeImage(file, originalDataUrl).catch(() => originalDataUrl);
+  const imageBase64 = String(processedDataUrl || "").split(",")[1];
+  const mimeType = getMimeTypeFromDataUrl(processedDataUrl) || file.type || "image/jpeg";
+  if (!imageBase64) throw new Error("missing image payload");
+  return { imageBase64, mimeType };
+}
+
+async function optimizeAnalyzeImage(file, dataUrl) {
+  const source = dataUrl || (await fileToDataUrl(file));
+  const image = await loadImageFromDataUrl(source);
+  const { width, height } = getFittedImageSize(image.naturalWidth || image.width, image.naturalHeight || image.height);
+  const keepOriginal =
+    width === (image.naturalWidth || image.width) &&
+    height === (image.naturalHeight || image.height) &&
+    file.size <= 1_500_000;
+
+  if (keepOriginal) return source;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d", { alpha: false });
+  if (!context) return source;
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, width, height);
+  context.drawImage(image, 0, 0, width, height);
+
+  const outputMimeType = file.type === "image/png" ? "image/png" : "image/jpeg";
+  return canvas.toDataURL(outputMimeType, 0.86);
+}
+
+function loadImageFromDataUrl(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = dataUrl;
+  });
+}
+
+function getFittedImageSize(width, height) {
+  const longEdge = Math.max(width, height);
+  if (!longEdge || longEdge <= maxAnalyzeImageDimension) {
+    return { width, height };
+  }
+
+  const scale = maxAnalyzeImageDimension / longEdge;
+  return {
+    width: Math.max(1, Math.round(width * scale)),
+    height: Math.max(1, Math.round(height * scale))
+  };
+}
+
+function getMimeTypeFromDataUrl(dataUrl) {
+  const match = String(dataUrl || "").match(/^data:([^;]+);base64,/i);
+  return match ? match[1] : "";
+}
+
+function shouldRetryAnalyzeError(error) {
+  const message = String(error?.message || "");
+  const status = Number(error?.status || 0);
+  if (status === 400 || status === 401 || status === 403) return false;
+  return (
+    status === 429 ||
+    status >= 500 ||
+    message.includes("timeout") ||
+    message.includes("Failed to fetch") ||
+    message.includes("NetworkError") ||
+    message.includes("empty analyze result")
+  );
+}
+
+function abortActiveAnalyzeRequest() {
+  if (!activeAnalyzeController) return;
+  activeAnalyzeController.abort("cancelled");
+  activeAnalyzeController = null;
+}
+
+function isAbortError(error) {
+  return error?.name === "AbortError" || String(error?.message || "").includes("aborted");
 }
 
 function mockResult(file) {
@@ -271,11 +773,15 @@ function mockResult(file) {
   };
 }
 
-copyChinese.addEventListener("click", () => copyText(chinesePrompt.value, "中文 Prompt 已复制"));
-copyEnglish.addEventListener("click", () => copyText(englishPrompt.value, "英文 Prompt 已复制"));
+copyChinese.addEventListener("click", () => copyText(chinesePrompt.value, "已复制中文 Prompt", copyChinese));
+copyEnglish.addEventListener("click", () => copyText(englishPrompt.value, "已复制英文 Prompt", copyEnglish));
+chinesePrompt.addEventListener("input", fitResultPanelContent);
+englishPrompt.addEventListener("input", fitResultPanelContent);
 resultPanel.addEventListener("scroll", showResultScrollbar);
+workspaceScroll?.addEventListener("wheel", showWorkspaceScrollbar, { passive: true });
 
-savePrompt.addEventListener("click", () => {
+savePrompt.addEventListener("click", async () => {
+  if (savePrompt.disabled) return;
   const result = {
     title: titleInput.value.trim() || "未命名 Prompt",
     tags: tagsInput.value
@@ -285,94 +791,176 @@ savePrompt.addEventListener("click", () => {
       .slice(0, 3),
     chinesePrompt: chinesePrompt.value,
     englishPrompt: englishPrompt.value,
-    image: currentPreviewUrl
+    image: currentImageDataUrl || currentPreviewUrl,
+    createdAt: new Date().toISOString()
   };
-  addSavedCard(result);
-  currentPreviewUrl = "";
-  showToast("保存成功");
-  closeUploadModal();
+  savePrompt.disabled = true;
+  setSaveButtonLabel("保存中");
+  try {
+    await savePromptResult(result);
+    addSavedCard(result);
+    showToast("保存成功");
+    closeUploadModal();
+  } catch {
+    savePrompt.disabled = false;
+    setSaveButtonLabel("保存");
+    showToast("保存失败，请重试");
+  }
 });
 
-async function copyText(text, message) {
+async function savePromptResult(result) {
+  await wait(180);
+  if (!result.chinesePrompt && !result.englishPrompt) throw new Error("empty prompt");
+  return result;
+}
+
+async function copyText(text, message, button) {
   try {
-    await navigator.clipboard.writeText(text);
+    await writeClipboardText(text);
+    setCopyButtonState(button, "assets/figma/copy-inline-done.svg", "#ff7300");
+    showToast(message);
   } catch {
-    const textarea = document.createElement("textarea");
-    textarea.value = text;
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand("copy");
-    textarea.remove();
+    showToast("复制失败，请手动选择文本复制");
   }
-  showToast(message);
+}
+
+async function writeClipboardText(text) {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch {
+      // Fall through to the legacy path for file:// previews and restricted webviews.
+    }
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "true");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  textarea.style.pointerEvents = "none";
+  textarea.style.left = "-9999px";
+  document.body.appendChild(textarea);
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+  const copied = document.execCommand("copy");
+  textarea.remove();
+  if (!copied) throw new Error("copy failed");
+}
+
+function setSaveButtonLabel(text) {
+  if (savePromptLabel) {
+    savePromptLabel.textContent = text;
+    return;
+  }
+  if (savePrompt) savePrompt.textContent = text;
+}
+
+function setCopyButtonState(button, iconPath, color) {
+  if (!button) return;
+  resetCopyButtons();
+  const icon = button.querySelector(".copy-button-icon");
+  const label = button.querySelector("span");
+  if (icon) icon.src = iconPath;
+  if (label && color) label.style.color = color;
+  if (copyButtonResetTimer) window.clearTimeout(copyButtonResetTimer);
+  copyButtonResetTimer = window.setTimeout(() => {
+    if (icon) icon.src = "assets/figma/copy-inline.svg";
+    if (label) label.style.color = "";
+    copyButtonResetTimer = null;
+  }, 1400);
+}
+
+function resetCopyButtons() {
+  if (copyButtonResetTimer) window.clearTimeout(copyButtonResetTimer);
+  copyButtonResetTimer = null;
+  [copyChinese, copyEnglish].forEach((button) => {
+    if (!button) return;
+    const icon = button.querySelector(".copy-button-icon");
+    const label = button.querySelector("span");
+    if (icon) icon.src = "assets/figma/copy-inline.svg";
+    if (label) label.style.color = "";
+  });
 }
 
 function addSavedCard(result) {
   savedIndex += 1;
-  [...savedCards.children].forEach((card, index) => {
-    card.style.transform = `translateY(${(index + 1) * 22}px) scale(${Math.max(0.88, 1 - (index + 1) * 0.035)})`;
-    card.style.opacity = String(Math.max(0.24, 0.74 - index * 0.12));
-  });
-
-  const card = document.createElement("article");
-  card.className = "saved-card";
-  card.style.left = "0px";
-  card.style.top = "0px";
-  card.style.zIndex = String(20 + savedIndex);
-
-  if (result.image) {
-    const image = document.createElement("img");
-    image.src = result.image;
-    image.alt = result.title;
-    card.appendChild(image);
-  }
-
-  const caption = document.createElement("div");
-  caption.className = "saved-caption";
-  caption.textContent = result.title;
-  card.appendChild(caption);
-
-  savedCards.prepend(card);
+  const card = createPromptCardElement(
+    {
+      id: `saved-${savedIndex}`,
+      image: result.image,
+      imageWidth: 360,
+      imageHeight: 582,
+      title: result.title,
+      tags: result.tags,
+      prompt: result.chinesePrompt
+    },
+    0
+  );
+  card.classList.add("is-new");
+  card.style.zIndex = String(100 + savedIndex);
+  cardHotzones.prepend(card);
+  window.requestAnimationFrame(scheduleCardLayout);
 }
 
 function renderCardHotzones() {
   cardHotzones.innerHTML = "";
   promptCards.forEach((card, index) => {
-    const slot = cardSlots[index];
-    if (!slot) return;
-
-    const item = document.createElement("article");
-    item.className = "card-hotzone";
-    item.tabIndex = 0;
-    const imageRatio = card.imageWidth && card.imageHeight ? card.imageHeight / card.imageWidth : slot.height / slot.width;
-    item.dataset.ratio = String(imageRatio);
-    item.style.setProperty("--enter-order", String(index));
-    item.setAttribute("role", "button");
-    item.setAttribute("aria-label", `复制 ${card.title} 的中文 Prompt`);
-
-    item.innerHTML = `
-      <img class="card-base" src="${card.image}" alt="${card.title}" />
-      <div class="card-info">
-        <div class="card-content">
-          <h2>${card.title}</h2>
-          <div class="card-tags">${card.tags.map((tag) => `<span>${tag}</span>`).join("")}</div>
-          <p>${card.prompt}</p>
-        </div>
-      </div>
-    `;
-
-    item.addEventListener("click", () => {
-      copyText(card.prompt, "中文 Prompt 已复制");
-    });
-    item.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter" && event.key !== " ") return;
-      event.preventDefault();
-      copyText(card.prompt, "中文 Prompt 已复制");
-    });
-
-    cardHotzones.appendChild(item);
+    cardHotzones.appendChild(createPromptCardElement(card, index));
   });
   scheduleCardLayout();
+}
+
+function createPromptCardElement(card, index) {
+  const slot = cardSlots[index] || cardSlots[0] || { width: 282, height: 376 };
+  const item = document.createElement("article");
+  item.className = "card-hotzone";
+  item.tabIndex = 0;
+  const imageRatio = card.imageWidth && card.imageHeight ? card.imageHeight / card.imageWidth : slot.height / slot.width;
+  item.dataset.ratio = String(imageRatio);
+  item.style.setProperty("--enter-order", String(index));
+  item.setAttribute("role", "button");
+  item.setAttribute("aria-label", `复制 ${card.title} 的中文 Prompt`);
+  const safeTitle = escapeHtml(card.title || "");
+  const safePrompt = escapeHtml(card.prompt || "");
+  const safeImage = escapeHtml(card.image || "");
+  const safeTags = (card.tags || []).map((tag) => `<span>${escapeHtml(tag)}</span>`).join("");
+
+  item.innerHTML = `
+    <img class="card-base" src="${safeImage}" alt="${safeTitle}" />
+    <div class="card-info">
+      <div class="card-content">
+        <h2>${safeTitle}</h2>
+        <div class="card-tags">${safeTags}</div>
+        <p>${safePrompt}</p>
+      </div>
+    </div>
+  `;
+
+  item.addEventListener("click", () => {
+    copyText(card.prompt, "中文 Prompt 已复制");
+  });
+  item.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    copyText(card.prompt, "中文 Prompt 已复制");
+  });
+
+  return item;
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (char) => {
+    const entities = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    };
+    return entities[char];
+  });
 }
 
 function scheduleCardLayout() {
@@ -420,6 +1008,16 @@ function showToast(message) {
   toast.classList.add("is-show");
   if (toastTimer) window.clearTimeout(toastTimer);
   toastTimer = window.setTimeout(() => toast.classList.remove("is-show"), 1800);
+}
+
+function showWorkspaceScrollbar() {
+  if (!workspaceScroll) return;
+  workspaceScroll.classList.add("is-scrolling");
+  if (workspaceScrollTimer) window.clearTimeout(workspaceScrollTimer);
+  workspaceScrollTimer = window.setTimeout(() => {
+    workspaceScroll?.classList.remove("is-scrolling");
+    workspaceScrollTimer = null;
+  }, 760);
 }
 
 function showResultScrollbar() {

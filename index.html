@@ -32,38 +32,45 @@
           </div>
           <img class="sidebar-signature" src="assets/source/切图/工作台_首页/菜单栏_背景_士气标志.png" alt="" aria-hidden="true" />
           <nav class="workspace-menu">
-            <button class="menu-hit is-selected" type="button">
+            <button class="menu-hit is-selected" type="button" data-view="prompt-organizer" data-title="全部提示词" data-label="提示词整理">
               <img class="menu-icon icon-off" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单一_icon未选.svg" alt="" />
+              <img class="menu-icon icon-hover" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单一_icon悬停.svg" alt="" />
               <img class="menu-icon icon-on" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单一_icon选中.svg" alt="" />
               <span>提示词整理</span>
             </button>
-            <button class="menu-hit" type="button">
+            <button class="menu-hit" type="button" data-view="skill-organizer" data-title="Skill 整理" data-label="Skill 整理">
               <img class="menu-icon icon-off" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单二_icon未选.svg" alt="" />
+              <img class="menu-icon icon-hover" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单二_icon悬停.svg" alt="" />
               <img class="menu-icon icon-on" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单二_icon选中.svg" alt="" />
               <span>Skill 整理</span>
             </button>
-            <button class="menu-hit" type="button">
+            <button class="menu-hit" type="button" data-view="requirement-analysis" data-title="需求分析" data-label="需求分析">
               <img class="menu-icon icon-off" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单三_icon未选.svg" alt="" />
+              <img class="menu-icon icon-hover" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单三_icon悬停.svg" alt="" />
               <img class="menu-icon icon-on" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单三_icon选中.svg" alt="" />
               <span>需求分析</span>
             </button>
-            <button class="menu-hit" type="button">
+            <button class="menu-hit" type="button" data-view="palette-extract" data-title="自动提取色板" data-label="自动提取色板">
               <img class="menu-icon icon-off" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单四_icon未选.svg" alt="" />
+              <img class="menu-icon icon-hover" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单四_icon悬停.svg" alt="" />
               <img class="menu-icon icon-on" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单四_icon选中.svg" alt="" />
               <span>自动提取色板</span>
             </button>
-            <button class="menu-hit" type="button">
+            <button class="menu-hit" type="button" data-view="auto-review" data-title="一键自动核查" data-label="一键自动核查">
               <img class="menu-icon icon-off" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单五_icon未选.svg" alt="" />
+              <img class="menu-icon icon-hover" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单五_icon悬停.svg" alt="" />
               <img class="menu-icon icon-on" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单五_icon选中.svg" alt="" />
               <span>一键自动核查</span>
             </button>
-            <button class="menu-hit" type="button">
+            <button class="menu-hit" type="button" data-view="copy-editor" data-title="人感文案编辑器" data-label="人感文案编辑器">
               <img class="menu-icon icon-off" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单六_icon未选.svg" alt="" />
+              <img class="menu-icon icon-hover" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单六_icon悬停.svg" alt="" />
               <img class="menu-icon icon-on" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单六_icon选中.svg" alt="" />
               <span>人感文案编辑器</span>
             </button>
-            <button class="menu-hit" type="button">
+            <button class="menu-hit" type="button" data-view="style-extend" data-title="风格延展" data-label="风格延展">
               <img class="menu-icon icon-off" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单七_icon未选.svg" alt="" />
+              <img class="menu-icon icon-hover" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单七_icon悬停.svg" alt="" />
               <img class="menu-icon icon-on" src="assets/source/切图/工作台_首页/菜单栏_菜单_菜单七_icon选中.svg" alt="" />
               <span>风格延展</span>
             </button>
@@ -96,6 +103,14 @@
             <div id="savedCards" class="saved-cards" aria-label="新增提示词"></div>
           </div>
 
+          <div id="workspaceDropOverlay" class="workspace-drop-overlay" aria-hidden="true">
+            <div class="workspace-drop-frame" aria-hidden="true"></div>
+            <div class="workspace-drop-copy">
+              <div id="workspaceDropTitle" class="workspace-drop-title">拖拽图片到此处</div>
+              <div class="workspace-drop-subtitle">将图片拖到画面内以分析提示词，支持JPG、PNG、WEBP等格式</div>
+            </div>
+          </div>
+
           <div class="upload-dock" aria-hidden="true"></div>
           <button id="uploadButton" class="upload-button" type="button" aria-label="点击/拖拽上传"></button>
         </section>
@@ -112,10 +127,18 @@
             </button>
 
             <label id="dropZone" class="drop-zone" aria-label="上传参考图">
-              <input id="fileInput" type="file" accept="image/*" />
-              <span id="dropHint" class="drop-hint">点击或拖拽图片上传</span>
+              <input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp" />
+              <span id="dropHint" class="drop-hint">
+                <span class="drop-hint-main">点击 / 粘贴 / 拖拽上传图片</span>
+                <span class="drop-hint-sub">将图片拖到画面内以分析提示词，支持 JPG、PNG、WEBP 等格式</span>
+              </span>
               <img id="previewImage" class="preview-image" alt="上传图片预览" />
-              <span id="uploadError" class="upload-error">上传失败，请重新上传</span>
+              <div id="uploadError" class="upload-error">
+                <span class="upload-error-text">上传失败，请重新上传</span>
+                <button id="retryUploadButton" class="retry-upload-button" type="button">
+                  <span class="retry-upload-button-label">重新上传</span>
+                </button>
+              </div>
             </label>
 
             <section class="prompt-panel">
@@ -136,8 +159,11 @@
                   </div>
                 </div>
               </div>
+              <img class="loading-decor" src="assets/source/切图/工作台_首页_hover_shangchuan_prompt_fenxi/添加图片_prompt_zhuang2.svg" alt="" />
 
-              <button id="savePrompt" class="save-button" type="button">保存</button>
+              <button id="savePrompt" class="save-button" type="button">
+                <span class="save-button-label">保存</span>
+              </button>
               <form id="resultPanel" class="result-panel">
                 <label class="field-title">标题</label>
                 <input id="titleInput" class="prompt-input title-input" value="静谧之中听见野性" />
@@ -146,14 +172,19 @@
                 <input id="tagsInput" class="prompt-input tags-input" value="野性静音；可爱拟人；高端耳机" />
 
                 <label class="field-title cn-title">中文 Prompt</label>
-                <button id="copyChinese" class="inline-copy cn-copy" type="button">复制</button>
+                <button id="copyChinese" class="inline-copy cn-copy" type="button">
+                  <img class="copy-button-icon" src="assets/figma/copy-inline.svg" alt="" />
+                  <span>复制</span>
+                </button>
                 <textarea id="chinesePrompt" class="prompt-textarea chinese-area">高端耳机产品广告海报，一只棕熊正面居中肖像，闭着眼睛，神情平静，佩戴黑色头戴式无线降噪耳机，背景为极简浅灰色，大面积留白，画面中央突出产品与动物结合的反差感，整体构图对称，视觉高级克制，商业广告摄影风格，真实毛发细节，柔和棚拍光线，海报版式简洁，带品牌标题与产品文案，突出静谧、沉浸、降噪、专业音质的感觉。</textarea>
 
                 <label class="field-title en-title">英文 Prompt</label>
-                <button id="copyEnglish" class="inline-copy en-copy" type="button">复制</button>
-                <textarea id="englishPrompt" class="prompt-textarea english-area">This high-end headphone product advertisement poster features a centrally centered portrait with a calm expression, wearing black wireless noise-canceling headphones. The background is minimalist light gray with ample white space, emphasizing the contrast between product and subject, with symmetrical composition, refined commercial photography lighting, realistic texture, and a clean poster layout.</textarea>
+                <button id="copyEnglish" class="inline-copy en-copy" type="button">
+                  <img class="copy-button-icon" src="assets/figma/copy-inline.svg" alt="" />
+                  <span>复制</span>
+                </button>
+              <textarea id="englishPrompt" class="prompt-textarea english-area">This high-end headphone product advertisement poster features a centrally centered portrait with a calm expression, wearing black wireless noise-canceling headphones. The background is minimalist light gray with ample white space, emphasizing the contrast between product and subject, with symmetrical composition, refined commercial photography lighting, realistic texture, and a clean poster layout.</textarea>
               </form>
-              <img class="prompt-decor" src="assets/source/切图/工作台_首页_hover_shangchuan_prompt_fenxi/添加图片_prompt_zhuang2.png" alt="" />
             </section>
           </div>
         </div>
@@ -162,6 +193,16 @@
       <div id="toast" class="toast" role="status"></div>
     </main>
 
+    <script src="src/runtime-config.js"></script>
+    <script>
+      window.__WORKSTATION_CONFIG__ = Object.assign(
+        {
+          analyzeApiBase: "https://shiqi-workstation.netlify.app",
+          freezeAnalyzeLoading: false
+        },
+        window.__WORKSTATION_CONFIG__ || {}
+      );
+    </script>
     <script src="src/cards.js"></script>
     <script src="src/app.js"></script>
   </body>
