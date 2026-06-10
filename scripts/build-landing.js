@@ -17,6 +17,10 @@ const outputDir = path.join(rootDir, "landing");
 const publicAssetsDir = path.join(sourceDir, "public", "home-assets");
 const outputAssetsDir = path.join(outputDir, "home-assets");
 const workspaceLogoAsset = path.join(rootDir, "assets", "source", "切图", "工作台_首页", "导航栏_logo.png");
+const requiredLandingDeps = [
+  path.join(sourceDir, "node_modules", "typescript", "bin", "tsc"),
+  path.join(sourceDir, "node_modules", "vite", "bin", "vite.js"),
+];
 
 if (!existsSync(path.join(sourceDir, "package.json"))) {
   throw new Error("Missing landing-source/package.json");
@@ -34,7 +38,7 @@ function run(command, args, cwd) {
   }
 }
 
-if (!existsSync(path.join(sourceDir, "node_modules"))) {
+if (!requiredLandingDeps.every((depPath) => existsSync(depPath))) {
   run("npm", ["install"], sourceDir);
 }
 
