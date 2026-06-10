@@ -4,25 +4,23 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>士气工作站</title>
-    <link rel="stylesheet" href="src/styles.css" />
+    <link rel="stylesheet" href="src/styles.css?v=20260609-delayed-prompt-panel" />
   </head>
   <body>
     <main id="app" class="app" aria-live="polite">
       <section id="entryPage" class="page page-entry is-active">
-        <div class="entry-bg"></div>
-        <img class="entry-logo" src="assets/source/切图/工作台_首页_默认/工作台_首页_默认_logo.png" alt="士气工作站" />
-        <div id="entryShiqEffect" class="entry-shiq-effect" aria-hidden="true">
-          <canvas id="entryShiqBeam" class="entry-shiq-canvas entry-shiq-beam"></canvas>
-          <canvas id="entryShiqFog" class="entry-shiq-canvas entry-shiq-fog"></canvas>
-          <svg class="entry-shiq-logo" viewBox="0 0 423 151" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="SHIQ">
-            <path d="M86.856 124.592C78.624 131.816 66.528 136.016 53.256 136.016C52.416 136.016 51.408 136.016 50.4 135.848C27.552 134.84 9.072 121.736 3.528 102.584L26.544 96.872C30.072 108.968 41.832 113.672 51.576 114.176C59.136 114.512 66.192 112.496 70.224 108.968C72.576 106.784 73.752 104.096 73.584 100.904C73.416 92.336 65.52 88.304 50.232 83.264C48.216 82.592 46.536 82.088 45.024 81.584C44.184 81.248 43.344 80.912 42.504 80.576C31.92 77.048 7.224 68.48 9.072 45.464C10.752 25.304 31.08 14.552 50.232 14.552C71.064 14.552 86.352 23.456 93.408 39.584L71.232 47.648C69.048 42.776 64.512 36.392 50.232 36.392C49.56 36.392 33.936 36.56 33.096 47.144C32.592 52.856 39.312 56.216 50.904 60.248C52.08 60.584 53.088 60.92 53.928 61.256C55.272 61.76 56.616 62.264 58.296 62.768C70.728 66.8 96.936 75.2 97.608 100.4C97.944 109.64 94.248 118.04 86.856 124.592ZM178.979 16.568H202.835V134H178.979V85.616H127.739V134H103.883V16.568H127.739V63.776H178.979V16.568ZM238.124 134.168H214.268V16.568H238.124V134.168ZM381.217 134H352.153L344.089 126.776C334.009 132.656 322.249 136.016 309.481 136.016C273.361 136.016 244.129 108.8 244.129 75.368C244.129 41.768 273.361 14.552 309.481 14.552C345.601 14.552 375.001 41.768 375.001 75.368C375.001 90.152 369.121 103.76 359.545 114.344L381.217 134ZM309.481 114.176C315.529 114.176 321.241 113 326.449 110.816L305.953 92H335.017L342.409 98.888C347.785 92.336 350.977 84.104 350.977 75.368C350.977 53.864 332.497 36.392 309.481 36.392C286.633 36.392 267.985 53.864 267.985 75.368C267.985 96.704 286.633 114.176 309.481 114.176Z" />
-            <path d="M412.71 132.557L422.773 75.5362C422.978 73.9805 421.967 72.2616 420.85 72.2616L414.334 72.2547C413.214 72.2547 412.204 70.5296 412.415 68.974L422.124 18.2953C422.335 16.7396 421.325 15.0138 420.205 15.0138L397.51 15C396.882 15 396.4 15.5659 396.284 16.4356L386.939 69.0375C386.728 70.5931 387.738 72.3182 388.859 72.3182L395.262 72.3258C396.378 72.3258 397.389 74.044 397.184 75.5997L386.826 130.712C386.622 132.267 387.633 133.985 388.749 133.985L411.481 134C412.112 134 412.597 133.427 412.71 132.557Z" />
-          </svg>
+        <div class="entry-frame-shell">
+          <iframe
+            id="landingFrame"
+            class="entry-frame"
+            src="landing/index.html"
+            title="首页入口"
+            loading="eager"
+          ></iframe>
+          <div class="entry-hit-stage" aria-hidden="true">
+            <button id="startButtonFallback" class="entry-start-hit" type="button" tabindex="-1" aria-hidden="true"></button>
+          </div>
         </div>
-        <img class="entry-title" src="assets/source/切图/工作台_首页_默认/工作台_首页_默认_neiorong.png" alt="WORK SPACE" />
-        <button id="startButton" class="start-button" type="button" aria-label="开始使用士气工作站">
-          <span>开始使用</span>
-        </button>
       </section>
 
       <section id="workspacePage" class="page page-workspace" aria-label="工作站首页">
@@ -112,7 +110,7 @@
           </div>
 
           <div class="upload-dock" aria-hidden="true"></div>
-          <button id="uploadButton" class="upload-button" type="button" aria-label="点击/拖拽上传"></button>
+          <button id="uploadButton" class="upload-button" type="button" aria-label="上传图片"></button>
         </section>
       </section>
 
@@ -133,8 +131,13 @@
                 <span class="drop-hint-sub">将图片拖到画面内以分析提示词，支持 JPG、PNG、WEBP 等格式</span>
               </span>
               <img id="previewImage" class="preview-image" alt="上传图片预览" />
+              <div class="scan-overlay" aria-hidden="true">
+                <canvas id="scanOverlayGrid" class="scan-overlay-grid"></canvas>
+                <div class="scan-overlay-beam"></div>
+                <div class="scan-overlay-noise"></div>
+              </div>
               <div id="uploadError" class="upload-error">
-                <span class="upload-error-text">上传失败，请重新上传</span>
+                <span class="upload-error-text">上传失败</span>
                 <button id="retryUploadButton" class="retry-upload-button" type="button">
                   <span class="retry-upload-button-label">重新上传</span>
                 </button>
@@ -190,10 +193,13 @@
         </div>
       </section>
 
-      <div id="toast" class="toast" role="status"></div>
+      <div id="toast" class="toast" role="status" aria-live="polite">
+        <span id="toastIcon" class="toast-icon" aria-hidden="true"></span>
+        <span id="toastText" class="toast-text"></span>
+      </div>
     </main>
 
-    <script src="src/runtime-config.js"></script>
+    <script src="src/runtime-config.js?v=20260609-delayed-prompt-panel"></script>
     <script>
       window.__WORKSTATION_CONFIG__ = Object.assign(
         {
@@ -203,7 +209,7 @@
         window.__WORKSTATION_CONFIG__ || {}
       );
     </script>
-    <script src="src/cards.js"></script>
-    <script src="src/app.js"></script>
+    <script src="src/cards.js?v=20260609-delayed-prompt-panel"></script>
+    <script src="src/app.js?v=20260609-delayed-prompt-panel"></script>
   </body>
 </html>

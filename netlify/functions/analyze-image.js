@@ -31,7 +31,11 @@ async function analyzeWithRetry({ apiKey, model, imageBase64, mimeType }) {
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
       const payload = await requestGemini({ apiKey, model, imageBase64, mimeType, attempt });
-      const text = payload?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+      const text = extractResponseText(payload);
+      if (!text) {
+        const finishReason = payload?.candidates?.[0]?.finishReason || payload?.promptFeedback?.blockReason || "unknown";
+        throw new Error(`empty model response: ${finishReason}`);
+      }
       const parsed = safeParse(text);
       const result = normalizeResult(parsed);
       if (!result.chinesePrompt && !result.englishPrompt) {
@@ -56,7 +60,7 @@ async function requestGemini({ apiKey, model, imageBase64, mimeType, attempt }) 
   const timeoutId = setTimeout(() => {
     didTimeout = true;
     controller.abort();
-  }, 40000);
+  }, 55000);
 
   try {
     const geminiResponse = await fetch(
@@ -109,6 +113,16 @@ async function requestGemini({ apiKey, model, imageBase64, mimeType, attempt }) 
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+function extractResponseText(payload) {
+  const parts = payload?.candidates?.[0]?.content?.parts;
+  if (!Array.isArray(parts)) return "";
+  return parts
+    .map((part) => String(part?.text || "").trim())
+    .filter(Boolean)
+    .join("\n")
+    .trim();
 }
 
 function safeParse(text) {

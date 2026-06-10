@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "python3 -m http.server 5173",
-    "build": "node scripts/build.js"
+    "dev": "node scripts/build-landing.js && python3 -m http.server 5173",
+    "build": "node scripts/build-landing.js && node scripts/build.js"
   },
   "devDependencies": {}
 }

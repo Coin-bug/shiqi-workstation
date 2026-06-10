@@ -2,6 +2,7 @@ import { accessSync, readFileSync } from "node:fs";
 
 const required = [
   "index.html",
+  "landing/index.html",
   "src/runtime-config.js",
   "src/styles.css",
   "src/app.js",

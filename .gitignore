@@ -1,1 +1,4 @@
 .DS_Store
+landing-source/node_modules/
+landing-source/dist/
+landing-source/package-lock.json

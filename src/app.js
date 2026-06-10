@@ -1,8 +1,9 @@
 const { cardSlots, promptCards } = window;
 
 const entryPage = document.querySelector("#entryPage");
+const landingFrame = document.querySelector("#landingFrame");
+const startButtonFallback = document.querySelector("#startButtonFallback");
 const workspacePage = document.querySelector("#workspacePage");
-const startButton = document.querySelector("#startButton");
 const uploadButton = document.querySelector("#uploadButton");
 const workspaceMain = document.querySelector(".workspace-main");
 const workspaceTitleText = document.querySelector(".workspace-title span");
@@ -11,6 +12,7 @@ const closeModal = document.querySelector("#closeModal");
 const dropZone = document.querySelector("#dropZone");
 const fileInput = document.querySelector("#fileInput");
 const previewImage = document.querySelector("#previewImage");
+const scanOverlayGrid = document.querySelector("#scanOverlayGrid");
 const uploadError = document.querySelector("#uploadError");
 const retryUploadButton = document.querySelector("#retryUploadButton");
 const loadingText = document.querySelector("#loadingText");
@@ -27,6 +29,8 @@ const savePromptLabel = savePrompt?.querySelector(".save-button-label");
 const copyChinese = document.querySelector("#copyChinese");
 const copyEnglish = document.querySelector("#copyEnglish");
 const toast = document.querySelector("#toast");
+const toastIcon = document.querySelector("#toastIcon");
+const toastText = document.querySelector("#toastText");
 const cardHotzones = document.querySelector("#cardHotzones");
 const savedCards = document.querySelector("#savedCards");
 const workspaceScroll = document.querySelector("#workspaceScroll");
@@ -45,6 +49,7 @@ let toastTimer = null;
 let resultScrollTimer = null;
 let loadingTextTimer = null;
 let loadingStarSpinTimer = null;
+let previewLayoutFrame = 0;
 let analyzeMotionTimer = null;
 let saveTimer = null;
 let workspaceDragHideTimer = null;
@@ -60,16 +65,22 @@ let workspaceDragState = "idle";
 let activeAnalyzeRun = 0;
 let savedIndex = 0;
 let cardLayoutFrame = 0;
-let stopEntryShiqEffect = null;
+let landingFrameBindTimer = null;
+let scanGridFrame = 0;
+let scanGridDots = [];
+let previewLayoutFollowFrame = 0;
 
 const supportedImageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
-const analyzeMotionDuration = 280;
-const minimumAnalyzeDuration = 1420;
-const analyzeRequestTimeout = 45000;
+const analyzeRequestTimeout = 65000;
 const analyzeEndpointPath = "/.netlify/functions/analyze-image";
 const defaultAnalyzeApiBase = "https://shiqi-workstation.netlify.app";
-const maxAnalyzeImageDimension = 1600;
+const maxAnalyzeImageDimension = 1280;
+const maxAnalyzeImageBytes = 900_000;
 const maxAnalyzeAttempts = 3;
+const dropHintFadeDuration = 260;
+const previewImageFadeDuration = 520;
+const previewToAnalyzeDelay = 60;
+const dropZoneWidthTransitionDuration = 760;
 
 function fitStage() {
   const entryScale = Math.min(window.innerWidth / 1440, window.innerHeight / 900);
@@ -78,11 +89,18 @@ function fitStage() {
 }
 
 window.addEventListener("resize", fitStage);
+window.addEventListener("resize", schedulePreviewImageLayout);
+window.addEventListener("resize", () => {
+  scanGridDots = [];
+  resizeScanGrid();
+});
 fitStage();
 renderCardHotzones();
-stopEntryShiqEffect = initEntryShiqEffect();
 
-startButton.addEventListener("click", () => {
+attachLandingFrameStartHandler();
+startButtonFallback?.addEventListener("click", enterWorkspace);
+
+function enterWorkspace() {
   if (entryPage.classList.contains("is-exiting")) return;
   entryPage.classList.add("is-exiting");
   window.setTimeout(() => {
@@ -90,11 +108,10 @@ startButton.addEventListener("click", () => {
     workspacePage.classList.add("is-active");
     document.documentElement.classList.add("is-workspace");
     document.body.classList.add("is-workspace");
-    stopEntryShiqEffect?.();
-    stopEntryShiqEffect = null;
+    if (landingFrame) landingFrame.setAttribute("tabindex", "-1");
     scheduleCardLayout();
   }, 260);
-});
+}
 
 const menuButtons = [...document.querySelectorAll(".menu-hit")];
 
@@ -108,6 +125,7 @@ uploadButton.addEventListener("click", () => {
   openModal();
 });
 closeModal.addEventListener("click", closeUploadModal);
+previewImage?.addEventListener("load", schedulePreviewImageLayout);
 retryUploadButton?.addEventListener("click", (event) => {
   event.preventDefault();
   event.stopPropagation();
@@ -160,7 +178,7 @@ function setUploadState(state) {
     uploadModalEmpty: "is-open is-idle",
     modalDragReady: "is-open is-idle is-drag-ready",
     filePickerOpen: "is-open is-idle is-file-picker-open",
-    preAnalyzeMotion: "is-open is-preparing",
+    previewing: "is-open is-idle is-previewing",
     analyzing: "is-open is-loading",
     result: "is-open is-complete",
     error: "is-open is-error"
@@ -168,6 +186,15 @@ function setUploadState(state) {
 
   modalLayer.className = `modal-layer ${classMap[state] || ""}`.trim();
   modalLayer.dataset.uploadState = state;
+  schedulePreviewImageLayout();
+  window.setTimeout(schedulePreviewImageLayout, 280);
+  if (state === "analyzing") {
+    followPreviewImageLayout(dropZoneWidthTransitionDuration + 120);
+    startScanGrid();
+  } else {
+    stopFollowingPreviewImageLayout();
+    stopScanGrid();
+  }
 }
 
 function resetUploadState() {
@@ -200,16 +227,225 @@ function resetUploadState() {
     loadingStar.style.transition = "";
   }
   setLoadingStage(stages[0].text, true);
-  dropZone.classList.remove("has-image", "has-error", "is-dragover");
+  dropZone.classList.remove("has-image", "has-error", "is-dragover", "is-hint-exiting", "is-preview-visible");
   resultPanel.classList.remove("is-scrolling");
-  previewImage.removeAttribute("src");
-  if (currentPreviewUrl) URL.revokeObjectURL(currentPreviewUrl);
-  currentPreviewUrl = "";
+  clearPreviewResources();
   fileInput.value = "";
 }
 
+function clearPreviewImageLayout() {
+  if (!previewImage) return;
+  stopFollowingPreviewImageLayout();
+  previewImage.style.width = "";
+  previewImage.style.height = "";
+}
+
+function revokePreviewUrl() {
+  if (!currentPreviewUrl) return;
+  URL.revokeObjectURL(currentPreviewUrl);
+  currentPreviewUrl = "";
+}
+
+function clearPreviewResources() {
+  clearPreviewImageLayout();
+  previewImage?.removeAttribute("src");
+  revokePreviewUrl();
+}
+
+function releaseAnalyzeArtifacts() {
+  currentUploadFile = null;
+  currentImageDataUrl = "";
+  clearPreviewResources();
+}
+
+function schedulePreviewImageLayout() {
+  if (previewLayoutFrame) window.cancelAnimationFrame(previewLayoutFrame);
+  previewLayoutFrame = window.requestAnimationFrame(() => {
+    previewLayoutFrame = 0;
+    syncPreviewImageLayout();
+  });
+}
+
+function syncPreviewImageLayout() {
+  if (!previewImage || !dropZone || !dropZone.classList.contains("has-image")) return;
+  const { naturalWidth, naturalHeight } = previewImage;
+  const { width: containerWidth, height: containerHeight } = dropZone.getBoundingClientRect();
+  if (!naturalWidth || !naturalHeight || !containerWidth || !containerHeight) return;
+
+  const scale = Math.min(containerWidth / naturalWidth, containerHeight / naturalHeight);
+  previewImage.style.width = `${naturalWidth * scale}px`;
+  previewImage.style.height = `${naturalHeight * scale}px`;
+}
+
+function stopFollowingPreviewImageLayout() {
+  if (previewLayoutFollowFrame) window.cancelAnimationFrame(previewLayoutFollowFrame);
+  previewLayoutFollowFrame = 0;
+}
+
+function followPreviewImageLayout(duration) {
+  stopFollowingPreviewImageLayout();
+  const endAt = performance.now() + duration;
+
+  const tick = () => {
+    syncPreviewImageLayout();
+    if (uploadState !== "analyzing" || performance.now() >= endAt) {
+      previewLayoutFollowFrame = 0;
+      return;
+    }
+    previewLayoutFollowFrame = window.requestAnimationFrame(tick);
+  };
+
+  previewLayoutFollowFrame = window.requestAnimationFrame(tick);
+}
+
+function waitForPreviewImageReady() {
+  if (!previewImage) return Promise.resolve();
+  if (previewImage.complete && previewImage.naturalWidth) {
+    return previewImage.decode?.().catch(() => {}) || Promise.resolve();
+  }
+
+  return new Promise((resolve) => {
+    const done = () => {
+      previewImage.removeEventListener("load", done);
+      previewImage.removeEventListener("error", done);
+      resolve();
+    };
+    previewImage.addEventListener("load", done, { once: true });
+    previewImage.addEventListener("error", done, { once: true });
+  });
+}
+
+async function fadeOutDropHint() {
+  dropZone.classList.add("is-hint-exiting");
+  await wait(dropHintFadeDuration);
+}
+
+function revealPreviewImage() {
+  dropZone.classList.remove("is-preview-visible");
+  dropZone.classList.add("has-image");
+  dropZone.classList.remove("has-error");
+  syncPreviewImageLayout();
+  previewImage.getBoundingClientRect();
+
+  return new Promise((resolve) => {
+    window.requestAnimationFrame(() => {
+      dropZone.classList.add("is-preview-visible");
+      resolve();
+    });
+  });
+}
+
+function startScanGrid() {
+  if (!scanOverlayGrid || scanGridFrame) return;
+  resizeScanGrid();
+  scanGridFrame = window.requestAnimationFrame(drawScanGrid);
+}
+
+function stopScanGrid() {
+  if (scanGridFrame) window.cancelAnimationFrame(scanGridFrame);
+  scanGridFrame = 0;
+  const context = scanOverlayGrid?.getContext("2d");
+  if (context) context.clearRect(0, 0, scanOverlayGrid.width, scanOverlayGrid.height);
+}
+
+function resizeScanGrid() {
+  if (!scanOverlayGrid) return;
+  const rect = scanOverlayGrid.getBoundingClientRect();
+  const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+  const width = Math.max(1, Math.round(rect.width * pixelRatio));
+  const height = Math.max(1, Math.round(rect.height * pixelRatio));
+  if (scanOverlayGrid.width === width && scanOverlayGrid.height === height && scanGridDots.length) return;
+
+  scanOverlayGrid.width = width;
+  scanOverlayGrid.height = height;
+  scanGridDots = createScanGridDots(width, height, pixelRatio);
+}
+
+function createScanGridDots(width, height, pixelRatio) {
+  const spacing = 23 * pixelRatio;
+  const startTime = performance.now();
+  const dots = [];
+  for (let y = spacing * 0.5; y < height; y += spacing) {
+    for (let x = spacing * 0.5; x < width; x += spacing) {
+      dots.push({
+        x: x + (Math.random() - 0.5) * spacing * 0.28,
+        y: y + (Math.random() - 0.5) * spacing * 0.28,
+        baseAlpha: 0.16 + Math.random() * 0.22,
+        baseRadius: (0.55 + Math.random() * 0.35) * pixelRatio,
+        isWarm: Math.random() < 0.28,
+        currentPulse: 0,
+        pulseFrom: 0,
+        pulseTo: 0,
+        pulseStartedAt: 0,
+        pulseDuration: 750,
+        nextPulseAt: startTime + Math.random() * 1800
+      });
+    }
+  }
+  return dots;
+}
+
+function updateScanGridDots(time) {
+  scanGridDots.forEach((dot) => {
+    getScanDotPulse(dot, time);
+    if (time < dot.nextPulseAt) return;
+
+    const shouldReturn = dot.currentPulse > 0.16 || dot.pulseTo > 0.16;
+    dot.pulseFrom = dot.currentPulse;
+    dot.pulseTo = shouldReturn ? 0 : 0.48 + Math.random() * 0.52;
+    dot.pulseStartedAt = time;
+    dot.pulseDuration = 540 + Math.random() * 450;
+    dot.nextPulseAt = time + dot.pulseDuration + (shouldReturn ? 330 + Math.random() * 1170 : 180 + Math.random() * 540);
+  });
+}
+
+function easeScanPulse(value) {
+  return value < 0.5 ? 4 * value * value * value : 1 - ((-2 * value + 2) ** 3) / 2;
+}
+
+function getScanDotPulse(dot, time) {
+  const progress = Math.min(1, Math.max(0, (time - dot.pulseStartedAt) / dot.pulseDuration));
+  dot.currentPulse = dot.pulseFrom + (dot.pulseTo - dot.pulseFrom) * easeScanPulse(progress);
+  return dot.currentPulse;
+}
+
+function drawScanGrid(time = 0) {
+  if (!scanOverlayGrid || uploadState !== "analyzing") {
+    scanGridFrame = 0;
+    return;
+  }
+
+  resizeScanGrid();
+  const context = scanOverlayGrid.getContext("2d");
+  if (!context) return;
+
+  const seconds = time / 1000;
+  updateScanGridDots(time);
+  context.clearRect(0, 0, scanOverlayGrid.width, scanOverlayGrid.height);
+  context.globalCompositeOperation = "lighter";
+
+  scanGridDots.forEach((dot) => {
+    const idleFlicker = (Math.sin(seconds * 0.8 + dot.x * 0.011 + dot.y * 0.007) + 1) * 0.035;
+    const activePulse = Math.min(1, getScanDotPulse(dot, time) + idleFlicker);
+    const alphaCurve = 1 - ((1 - activePulse) ** 2.6);
+    const radiusCurve = activePulse * activePulse * (3 - 2 * activePulse);
+    const alpha = Math.min(1, dot.baseAlpha + alphaCurve * (1 - dot.baseAlpha));
+    const radius = dot.baseRadius * (1 + radiusCurve);
+
+    context.beginPath();
+    context.fillStyle = `rgba(255, ${dot.isWarm ? 245 : 255}, ${dot.isWarm ? 220 : 255}, ${alpha})`;
+    context.arc(dot.x, dot.y, radius, 0, Math.PI * 2);
+    context.fill();
+  });
+
+  scanGridFrame = window.requestAnimationFrame(drawScanGrid);
+}
+
 dropZone.addEventListener("click", (event) => {
-  if (uploadState === "analyzing" || uploadState === "preAnalyzeMotion" || uploadState === "result") {
+  if (
+    uploadState === "analyzing" ||
+    uploadState === "result"
+  ) {
     event.preventDefault();
     return;
   }
@@ -219,7 +455,7 @@ dropZone.addEventListener("click", (event) => {
 
 dropZone.addEventListener("dragover", (event) => {
   event.preventDefault();
-  if (!isModalOpen() || uploadState === "analyzing" || uploadState === "preAnalyzeMotion") return;
+  if (!isModalOpen() || uploadState === "analyzing") return;
   dropZone.classList.add("is-dragover");
   setUploadState("modalDragReady");
 });
@@ -297,7 +533,7 @@ document.addEventListener("drop", (event) => {
 });
 
 document.addEventListener("paste", (event) => {
-  if (!isModalOpen() || uploadState === "analyzing" || uploadState === "preAnalyzeMotion") return;
+  if (!isModalOpen() || uploadState === "analyzing") return;
   const file = getFirstSupportedImage(event.clipboardData?.files);
   if (!file) return;
   event.preventDefault();
@@ -320,31 +556,29 @@ async function handleFile(file) {
   abortActiveAnalyzeRequest();
   currentUploadFile = file;
   generatedResult = null;
-  if (currentPreviewUrl) URL.revokeObjectURL(currentPreviewUrl);
+  revokePreviewUrl();
   currentPreviewUrl = URL.createObjectURL(file);
-  previewImage.src = currentPreviewUrl;
   modalLayer.setAttribute("aria-hidden", "false");
-  dropZone.classList.add("has-image");
-  dropZone.classList.remove("has-error");
+  setUploadState("previewing");
+  previewImage.src = currentPreviewUrl;
+  await waitForPreviewImageReady();
+  if (activeAnalyzeRun !== runId || uploadState === "idle") return;
+  await fadeOutDropHint();
+  if (activeAnalyzeRun !== runId || uploadState === "idle") return;
+  await revealPreviewImage();
   setLoadingStage(stages[0].text, true);
   progressBar.style.width = "0%";
-  setUploadState("preAnalyzeMotion");
-
-  if (analyzeMotionTimer) window.clearTimeout(analyzeMotionTimer);
-  analyzeMotionTimer = window.setTimeout(() => {
-    if (activeAnalyzeRun !== runId || uploadState === "idle") return;
-    setUploadState("analyzing");
-    startProgress();
-  }, analyzeMotionDuration);
-
+  await wait(previewImageFadeDuration);
+  if (activeAnalyzeRun !== runId || uploadState === "idle") return;
+  await wait(previewToAnalyzeDelay);
+  if (activeAnalyzeRun !== runId || uploadState === "idle") return;
+  setUploadState("analyzing");
+  startProgress();
   if (freezeAnalyzeLoading) return;
 
-  const startedAt = performance.now();
   try {
     currentImageDataUrl = await fileToDataUrl(file).catch(() => "");
     const result = await analyzeImage(file);
-    const elapsed = performance.now() - startedAt;
-    await wait(Math.max(0, minimumAnalyzeDuration - elapsed));
     if (activeAnalyzeRun !== runId || uploadState === "idle") return;
     finishProgress();
     await wait(260);
@@ -528,18 +762,16 @@ function showError() {
   stopProgress();
   setUploadState("error");
   modalLayer.setAttribute("aria-hidden", "false");
-  dropZone.classList.remove("has-image");
+  dropZone.classList.remove("has-image", "is-preview-visible");
   dropZone.classList.add("has-error");
-  showToast("上传失败，请重新上传");
+  releaseAnalyzeArtifacts();
+  showToast("上传失败");
 }
 
 async function analyzeImage(file) {
   const endpoint = resolveAnalyzeEndpoint();
-  if (endpoint) {
-    return requestImageAnalysis(file, endpoint);
-  }
-  await wait(880);
-  return mockResult(file);
+  if (!endpoint) throw new Error("missing analyze endpoint");
+  return requestImageAnalysis(file, endpoint);
 }
 
 async function requestImageAnalysis(file, endpoint) {
@@ -678,32 +910,73 @@ async function createAnalyzePayload(file) {
 async function optimizeAnalyzeImage(file, dataUrl) {
   const source = dataUrl || (await fileToDataUrl(file));
   const image = await loadImageFromDataUrl(source);
-  const { width, height } = getFittedImageSize(image.naturalWidth || image.width, image.naturalHeight || image.height);
-  const keepOriginal =
-    width === (image.naturalWidth || image.width) &&
-    height === (image.naturalHeight || image.height) &&
-    file.size <= 1_500_000;
+  try {
+    const naturalWidth = image.naturalWidth || image.width;
+    const naturalHeight = image.naturalHeight || image.height;
+    const { width, height } = getFittedImageSize(naturalWidth, naturalHeight);
+    const keepOriginal = width === naturalWidth && height === naturalHeight && file.size <= maxAnalyzeImageBytes;
 
-  if (keepOriginal) return source;
+    if (keepOriginal) return source;
 
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const context = canvas.getContext("2d", { alpha: false });
-  if (!context) return source;
-  context.fillStyle = "#ffffff";
-  context.fillRect(0, 0, width, height);
-  context.drawImage(image, 0, 0, width, height);
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d", { alpha: false });
+    if (!context) return source;
 
-  const outputMimeType = file.type === "image/png" ? "image/png" : "image/jpeg";
-  return canvas.toDataURL(outputMimeType, 0.86);
+    const outputMimeType = "image/jpeg";
+    let fallback = source;
+    let targetWidth = width;
+    let targetHeight = height;
+
+    for (let scaleAttempt = 0; scaleAttempt < 3; scaleAttempt += 1) {
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, targetWidth, targetHeight);
+      context.drawImage(image, 0, 0, targetWidth, targetHeight);
+
+      for (const quality of [0.82, 0.74, 0.66, 0.58]) {
+        const optimized = canvas.toDataURL(outputMimeType, quality);
+        fallback = optimized;
+        if (getDataUrlByteSize(optimized) <= maxAnalyzeImageBytes) {
+          canvas.width = 0;
+          canvas.height = 0;
+          return optimized;
+        }
+      }
+
+      targetWidth = Math.max(1, Math.round(targetWidth * 0.85));
+      targetHeight = Math.max(1, Math.round(targetHeight * 0.85));
+    }
+
+    canvas.width = 0;
+    canvas.height = 0;
+    return fallback;
+  } finally {
+    image.removeAttribute("src");
+  }
+}
+
+function getDataUrlByteSize(dataUrl) {
+  const payload = String(dataUrl || "").split(",")[1] || "";
+  const padding = payload.endsWith("==") ? 2 : payload.endsWith("=") ? 1 : 0;
+  return Math.max(0, Math.floor((payload.length * 3) / 4) - padding);
 }
 
 function loadImageFromDataUrl(dataUrl) {
   return new Promise((resolve, reject) => {
     const image = new Image();
-    image.onload = () => resolve(image);
-    image.onerror = reject;
+    const cleanup = () => {
+      image.onload = null;
+      image.onerror = null;
+    };
+    image.onload = () => {
+      cleanup();
+      resolve(image);
+    };
+    image.onerror = (error) => {
+      cleanup();
+      reject(error);
+    };
     image.src = dataUrl;
   });
 }
@@ -750,31 +1023,8 @@ function isAbortError(error) {
   return error?.name === "AbortError" || String(error?.message || "").includes("aborted");
 }
 
-function mockResult(file) {
-  const seedSource = `${file.name}-${file.size}-${savedIndex}`;
-  let hash = 0;
-  for (const char of seedSource) {
-    hash = (hash * 31 + char.charCodeAt(0)) % 2147483647;
-  }
-
-  const preset = promptCards[hash % promptCards.length] || promptCards[0];
-  const cleanName = file.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim();
-  const fallbackTitle = preset?.title || "橙衣工业潮玩人物肖像";
-  const title = cleanName ? cleanName.slice(0, 18) : fallbackTitle;
-
-  return {
-    title,
-    tags: [...(preset?.tags || ["潮玩肖像", "橙黑撞色", "厚重服装"])].slice(0, 3),
-    chinesePrompt:
-      preset?.prompt ||
-      "竖版近景人物肖像，一个工业潮玩风格的3D角色穿厚重橙色充气夹克，身体比例圆润夸张，脖颈被高领包裹，只露出冷酷眼神与鼻梁。角色戴深灰棒球帽，帽檐压低，一只手扶住帽檐，胸前有金属拉链、背带、徽章、身份牌和小型装饰标识，整体呈工装机能感。背景为纯黑低调空间，后方隐约出现巨大深灰字母作为层次。橙色服装与黑灰配件形成强烈撞色，材质为柔软充气布料、哑光塑料与金属，棚拍硬光，边缘高光清晰，潮流玩具海报质感。",
-    englishPrompt:
-      "A stylized industrial designer-toy portrait in a vertical composition, featuring a rounded 3D character wearing a bulky orange padded jacket, dark cap, layered straps, metallic zipper details, identity badge and utility accessories. The figure is framed against a deep black background with subtle oversized typography, creating a bold orange-and-charcoal contrast. Materials feel like soft inflatable fabric, matte plastic and brushed metal, lit with crisp studio highlights for a premium collectible poster look."
-  };
-}
-
-copyChinese.addEventListener("click", () => copyText(chinesePrompt.value, "已复制中文 Prompt", copyChinese));
-copyEnglish.addEventListener("click", () => copyText(englishPrompt.value, "已复制英文 Prompt", copyEnglish));
+copyChinese.addEventListener("click", () => copyText(chinesePrompt.value, "复制成功", copyChinese));
+copyEnglish.addEventListener("click", () => copyText(englishPrompt.value, "复制成功", copyEnglish));
 chinesePrompt.addEventListener("input", fitResultPanelContent);
 englishPrompt.addEventListener("input", fitResultPanelContent);
 resultPanel.addEventListener("scroll", showResultScrollbar);
@@ -804,7 +1054,7 @@ savePrompt.addEventListener("click", async () => {
   } catch {
     savePrompt.disabled = false;
     setSaveButtonLabel("保存");
-    showToast("保存失败，请重试");
+    showToast("保持失败");
   }
 });
 
@@ -820,7 +1070,7 @@ async function copyText(text, message, button) {
     setCopyButtonState(button, "assets/figma/copy-inline-done.svg", "#ff7300");
     showToast(message);
   } catch {
-    showToast("复制失败，请手动选择文本复制");
+    showToast("复制失败");
   }
 }
 
@@ -939,12 +1189,12 @@ function createPromptCardElement(card, index) {
   `;
 
   item.addEventListener("click", () => {
-    copyText(card.prompt, "中文 Prompt 已复制");
+    copyText(card.prompt, "复制成功");
   });
   item.addEventListener("keydown", (event) => {
     if (event.key !== "Enter" && event.key !== " ") return;
     event.preventDefault();
-    copyText(card.prompt, "中文 Prompt 已复制");
+    copyText(card.prompt, "复制成功");
   });
 
   return item;
@@ -1004,10 +1254,26 @@ function layoutCards() {
 }
 
 function showToast(message) {
-  toast.textContent = message;
+  const type = inferToastType(message);
+  if (toastText) {
+    toastText.textContent = message;
+  } else {
+    toast.textContent = message;
+  }
+  toast.classList.remove("is-success", "is-warning");
+  toast.classList.add(type === "success" ? "is-success" : "is-warning");
+  toastIcon?.setAttribute("data-state", type);
   toast.classList.add("is-show");
   if (toastTimer) window.clearTimeout(toastTimer);
-  toastTimer = window.setTimeout(() => toast.classList.remove("is-show"), 1800);
+  toastTimer = window.setTimeout(() => {
+    toast.classList.remove("is-show");
+  }, 1800);
+}
+
+function inferToastType(message) {
+  const content = String(message || "");
+  if (content.includes("成功")) return "success";
+  return "error";
 }
 
 function showWorkspaceScrollbar() {
@@ -1032,270 +1298,76 @@ function wait(ms) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
-function initEntryShiqEffect() {
-  const root = document.querySelector("#entryShiqEffect");
-  const beamCanvas = document.querySelector("#entryShiqBeam");
-  const fogCanvas = document.querySelector("#entryShiqFog");
-  const logo = root?.querySelector(".entry-shiq-logo");
-  if (!root || !beamCanvas || !fogCanvas || !logo || !window.Path2D) return;
+function attachLandingFrameStartHandler() {
+  if (!landingFrame) return;
 
-  const beamCtx = beamCanvas.getContext("2d", { alpha: true });
-  const fogCtx = fogCanvas.getContext("2d", { alpha: true });
-  if (!beamCtx || !fogCtx) return null;
-
-  const logoBounds = { x: 0, y: 0, width: 0, height: 0 };
-  const pointer = { x: 0, y: 0, targetX: 0, targetY: 0 };
-  const maskCanvas = document.createElement("canvas");
-  const maskCtx = maskCanvas.getContext("2d");
-  if (!maskCtx) return null;
-  const logoPaths = [...logo.querySelectorAll("path")].map((path) => new Path2D(path.getAttribute("d") || ""));
-  const fogPuffs = Array.from({ length: 32 }, (_, index) => ({
-    seed: index * 91.7,
-    baseX: (index % 9) / 8,
-    baseY: 0.24 + ((index * 37) % 100) / 190,
-    radius: 0.16 + ((index * 17) % 100) / 850,
-    speed: 0.42 + ((index * 13) % 100) / 260,
-    alpha: 0.11 + ((index * 19) % 100) / 1000
-  }));
-  const anchorPuffs = [
-    { x: -0.42, y: 0.08, radius: 0.66, phase: 0.2 },
-    { x: -0.2, y: -0.2, radius: 0.58, phase: 1.4 },
-    { x: 0.08, y: 0.18, radius: 0.72, phase: 2.1 },
-    { x: 0.32, y: -0.1, radius: 0.64, phase: 3.2 },
-    { x: 0.48, y: 0.12, radius: 0.54, phase: 4.4 }
-  ];
-  let renderScale = 1;
-  let maskIsDirty = true;
-  let effectIsActive = true;
-  let rafId = 0;
-
-  function resizeShiqCanvas() {
-    const rect = fogCanvas.getBoundingClientRect();
-    renderScale = Math.min(window.devicePixelRatio || 1, 1.5);
-    beamCanvas.width = Math.round(rect.width * renderScale);
-    beamCanvas.height = Math.round(rect.height * renderScale);
-    fogCanvas.width = Math.round(rect.width * renderScale);
-    fogCanvas.height = Math.round(rect.height * renderScale);
-    beamCtx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
-    fogCtx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
-    updateShiqBounds();
-    pointer.x = pointer.targetX = logoBounds.x + logoBounds.width * 0.18;
-    pointer.y = pointer.targetY = logoBounds.y - logoBounds.height * 0.2;
-    maskIsDirty = true;
-  }
-
-  function updateShiqBounds() {
-    const canvasRect = fogCanvas.getBoundingClientRect();
-    const logoRect = logo.getBoundingClientRect();
-    logoBounds.width = logoRect.width;
-    logoBounds.height = logoRect.height;
-    logoBounds.x = logoRect.left - canvasRect.left + logoRect.width / 2;
-    logoBounds.y = logoRect.top - canvasRect.top + logoRect.height / 2;
-  }
-
-  function drawPuff(ctx, x, y, radius, alpha, colorStops) {
-    const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-    colorStops.forEach(([stop, color]) => gradient.addColorStop(stop, color));
-    ctx.fillStyle = gradient;
-    ctx.globalAlpha = alpha;
-    ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  function drawLogoShape(ctx, x, y, scaleX, scaleY, alpha, color) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.scale(scaleX, scaleY);
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = color;
-    logoPaths.forEach((path) => ctx.fill(path));
-    ctx.restore();
-  }
-
-  function drawBeam() {
-    const width = beamCanvas.clientWidth;
-    const height = beamCanvas.clientHeight;
-    const dx = pointer.x - logoBounds.x;
-    const dy = pointer.y - logoBounds.y;
-    const distance = Math.hypot(dx, dy) || 1;
-    const axis = { x: dx / distance, y: dy / distance };
-    const side = { x: -axis.y, y: axis.x };
-    const logoLeft = logoBounds.x - logoBounds.width / 2;
-    const logoTop = logoBounds.y - logoBounds.height / 2;
-    const scaleX = logoBounds.width / 423;
-    const scaleY = logoBounds.height / 151;
-
-    beamCtx.clearRect(0, 0, width, height);
-    beamCtx.save();
-    beamCtx.globalCompositeOperation = "lighter";
-    for (let step = 1; step <= 12; step += 1) {
-      const layer = step / 12;
-      const spread = Math.max(0, (layer - 0.18) / 0.82);
-      const axisOffset = logoBounds.width * spread * 0.62;
-      const sideOffset = logoBounds.height * spread * 0.62;
-      const alpha = (1 - layer) ** 1.55;
-      const stretchX = 1 + spread * (Math.abs(axis.x) * 0.16 + Math.abs(side.x) * 0.92);
-      const stretchY = 1 + spread * (Math.abs(axis.y) * 0.16 + Math.abs(side.y) * 0.92);
-      beamCtx.filter = `blur(${7 + layer * 16}px)`;
-      [0, -1, 1].forEach((sideIndex) => {
-        if (sideIndex !== 0 && step % 4 !== 0) return;
-        const sideAlpha = sideIndex === 0 ? 1 : 0.22;
-        const offsetX = axis.x * axisOffset + side.x * sideIndex * sideOffset;
-        const offsetY = axis.y * axisOffset + side.y * sideIndex * sideOffset;
-        drawLogoShape(
-          beamCtx,
-          logoLeft + offsetX - (logoBounds.width * (stretchX - 1)) / 2,
-          logoTop + offsetY - (logoBounds.height * (stretchY - 1)) / 2,
-          scaleX * stretchX,
-          scaleY * stretchY,
-          alpha * sideAlpha * 0.12,
-          "rgb(255, 112, 18)"
-        );
-      });
+  const syncLandingLogo = (landingDocument) => {
+    if (!landingDocument) return;
+    if (!landingDocument.getElementById("workstation-landing-logo-override")) {
+      const style = landingDocument.createElement("style");
+      style.id = "workstation-landing-logo-override";
+      style.textContent = `
+        img[src$="/home-assets/logo.png"],
+        img[src$="./home-assets/logo.png"],
+        img[src*="home-assets/logo.png"] {
+          position: fixed !important;
+          left: 22px !important;
+          top: 22px !important;
+          width: 188.75px !important;
+          height: 28px !important;
+          max-width: none !important;
+          z-index: 50 !important;
+          pointer-events: none !important;
+          user-select: none !important;
+        }
+      `;
+      landingDocument.head?.appendChild(style);
     }
-    beamCtx.filter = "blur(9px)";
-    drawLogoShape(beamCtx, logoLeft, logoTop, scaleX, scaleY, 0.18, "rgb(255, 164, 52)");
-    beamCtx.globalCompositeOperation = "destination-out";
-    beamCtx.filter = "blur(2px)";
-    drawLogoShape(beamCtx, logoLeft, logoTop, scaleX, scaleY, 1, "#000");
-    beamCtx.globalCompositeOperation = "lighter";
-    beamCtx.filter = "blur(22px)";
-    const radial = beamCtx.createRadialGradient(
-      logoBounds.x - axis.x * logoBounds.width * 0.08,
-      logoBounds.y - axis.y * logoBounds.height * 0.12,
-      0,
-      logoBounds.x,
-      logoBounds.y,
-      logoBounds.width * 0.68
-    );
-    radial.addColorStop(0, "rgba(255, 128, 24, 0.16)");
-    radial.addColorStop(0.42, "rgba(255, 76, 8, 0.07)");
-    radial.addColorStop(1, "rgba(255, 91, 10, 0)");
-    beamCtx.fillStyle = radial;
-    beamCtx.fillRect(0, 0, width, height);
-    beamCtx.restore();
-  }
-
-  function drawWarmPuff(x, y, radius, alpha, phase) {
-    const swayX = Math.cos(phase) * radius * 0.13;
-    const swayY = Math.sin(phase * 1.2) * radius * 0.08;
-    drawPuff(fogCtx, x - swayX, y - swayY, radius * 1.28, alpha * 0.34, [
-      [0, "rgba(255, 164, 42, 0.48)"],
-      [0.48, "rgba(255, 100, 15, 0.2)"],
-      [1, "rgba(255, 100, 15, 0)"]
-    ]);
-    drawPuff(fogCtx, x, y, radius, alpha * 0.82, [
-      [0, "rgba(255, 184, 65, 0.82)"],
-      [0.34, "rgba(255, 122, 24, 0.48)"],
-      [0.72, "rgba(255, 86, 12, 0.18)"],
-      [1, "rgba(255, 86, 12, 0)"]
-    ]);
-  }
-
-  function drawDarkPuff(x, y, radius, alpha) {
-    drawPuff(fogCtx, x, y, radius, alpha, [
-      [0, "rgba(55, 17, 2, 0.58)"],
-      [0.46, "rgba(92, 31, 3, 0.2)"],
-      [1, "rgba(92, 31, 3, 0)"]
-    ]);
-  }
-
-  function drawMask(width, height) {
-    const scaleX = logoBounds.width / 423;
-    const scaleY = logoBounds.height / 151;
-    const left = logoBounds.x - logoBounds.width / 2;
-    const top = logoBounds.y - logoBounds.height / 2;
-    maskCanvas.width = Math.round(width * renderScale);
-    maskCanvas.height = Math.round(height * renderScale);
-    maskCtx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
-    maskCtx.clearRect(0, 0, width, height);
-    maskCtx.save();
-    maskCtx.translate(left, top);
-    maskCtx.scale(scaleX, scaleY);
-    maskCtx.lineJoin = "round";
-    maskCtx.lineCap = "round";
-    maskCtx.strokeStyle = "#fff";
-    maskCtx.fillStyle = "rgba(255, 255, 255, 0.88)";
-    maskCtx.filter = "blur(9px)";
-    maskCtx.lineWidth = 24;
-    logoPaths.forEach((path) => maskCtx.stroke(path));
-    maskCtx.filter = "blur(4px)";
-    maskCtx.lineWidth = 10;
-    logoPaths.forEach((path) => maskCtx.stroke(path));
-    maskCtx.filter = "none";
-    maskCtx.globalCompositeOperation = "destination-out";
-    logoPaths.forEach((path) => maskCtx.fill(path));
-    maskCtx.restore();
-    maskIsDirty = false;
-  }
-
-  function clipFogToLogo(width, height) {
-    if (maskIsDirty) drawMask(width, height);
-    fogCtx.save();
-    fogCtx.globalCompositeOperation = "destination-in";
-    fogCtx.drawImage(maskCanvas, 0, 0, width, height);
-    fogCtx.restore();
-  }
-
-  function renderShiq(time = 0) {
-    if (!effectIsActive || document.documentElement.classList.contains("is-workspace")) return;
-    const width = fogCanvas.clientWidth;
-    const height = fogCanvas.clientHeight;
-    const seconds = time / 1000;
-    pointer.x += (pointer.targetX - pointer.x) * 0.08;
-    pointer.y += (pointer.targetY - pointer.y) * 0.08;
-
-    drawBeam();
-    fogCtx.clearRect(0, 0, width, height);
-    fogCtx.globalCompositeOperation = "source-over";
-    fogPuffs.forEach((puff) => {
-      const phase = seconds * puff.speed + puff.seed;
-      const pulse = 0.72 + Math.sin(seconds * 2.4 + puff.seed) * 0.28;
-      const x = logoBounds.x + Math.sin(phase) * logoBounds.width * (0.38 + puff.baseX * 0.16);
-      const y = logoBounds.y + Math.cos(phase * 0.9) * logoBounds.height * (0.18 + puff.baseY * 0.16);
-      drawWarmPuff(x, y, puff.radius * logoBounds.width * (0.42 + pulse * 0.12), puff.alpha * pulse, phase);
-    });
-
-    const pulse = 0.7 + Math.sin(seconds * 2.35) * 0.22 + Math.sin(seconds * 4.1) * 0.08;
-    fogCtx.globalCompositeOperation = "lighter";
-    drawPuff(fogCtx, logoBounds.x, logoBounds.y, logoBounds.width * (0.48 + pulse * 0.1), 0.42 + pulse * 0.1, [
-      [0, "rgba(255, 132, 28, 0.62)"],
-      [0.35, "rgba(255, 92, 18, 0.34)"],
-      [0.74, "rgba(255, 58, 8, 0.1)"],
-      [1, "rgba(255, 69, 10, 0)"]
-    ]);
-    anchorPuffs.forEach((puff) => {
-      const localPulse = 0.74 + Math.sin(seconds * 2.15 + puff.phase) * 0.26;
-      const x = logoBounds.x + logoBounds.width * puff.x;
-      const y = logoBounds.y + logoBounds.height * puff.y;
-      const radius = logoBounds.height * puff.radius * (0.9 + localPulse * 0.18);
-      drawWarmPuff(x, y, radius, 0.16 + localPulse * 0.1, puff.phase);
-      drawDarkPuff(x + Math.cos(puff.phase) * radius * 0.18, y + Math.sin(puff.phase) * radius * 0.12, radius * 0.54, 0.1 + localPulse * 0.06);
-    });
-    clipFogToLogo(width, height);
-    rafId = window.requestAnimationFrame(renderShiq);
-  }
-
-  const updatePointer = (event) => {
-    const rect = beamCanvas.getBoundingClientRect();
-    pointer.targetX = event.clientX - rect.left;
-    pointer.targetY = event.clientY - rect.top;
   };
 
-  window.addEventListener("resize", resizeShiqCanvas);
-  entryPage.addEventListener("pointermove", updatePointer);
-  window.addEventListener("load", resizeShiqCanvas);
-  resizeShiqCanvas();
-  rafId = window.requestAnimationFrame(renderShiq);
+  const bindStartButton = () => {
+    const landingDocument = landingFrame.contentDocument;
+    if (!landingDocument) return false;
+    syncLandingLogo(landingDocument);
 
-  return () => {
-    effectIsActive = false;
-    if (rafId) window.cancelAnimationFrame(rafId);
-    window.removeEventListener("resize", resizeShiqCanvas);
-    window.removeEventListener("load", resizeShiqCanvas);
-    entryPage.removeEventListener("pointermove", updatePointer);
-    beamCtx.clearRect(0, 0, beamCanvas.clientWidth, beamCanvas.clientHeight);
-    fogCtx.clearRect(0, 0, fogCanvas.clientWidth, fogCanvas.clientHeight);
+    const startImage = landingDocument.querySelector('img[alt="开始使用"]');
+    const startButton = startImage?.closest("button");
+    if (!startButton) return false;
+    if (startButton.dataset.workstationBound === "true") return true;
+
+    startButton.dataset.workstationBound = "true";
+    startButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      enterWorkspace();
+    });
+    return true;
   };
+
+  const stopWatching = () => {
+    if (landingFrameBindTimer) window.clearInterval(landingFrameBindTimer);
+    landingFrameBindTimer = null;
+  };
+
+  const startWatching = () => {
+    stopWatching();
+    watchUntilBound();
+    if (!landingFrameBindTimer) {
+      landingFrameBindTimer = window.setInterval(() => {
+        watchUntilBound();
+      }, 200);
+    }
+  };
+
+  const watchUntilBound = () => {
+    if (bindStartButton()) {
+      stopWatching();
+    }
+  };
+
+  landingFrame.addEventListener("load", () => {
+    startWatching();
+  });
+
+  startWatching();
 }
